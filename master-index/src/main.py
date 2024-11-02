@@ -8,9 +8,9 @@ import pandas as pd
 import requests
 import json
 from datetime import datetime
-import time
-import random
+import xxhash
 from io import BytesIO
+
 headers = {
     'User-Agent': 'CompanyE InvestmentServices admin@companye.com',
     'Accept-Encoding': 'gzip, deflate',
@@ -27,28 +27,8 @@ output_topic = app.topic(
     )
 
 logger.debug(f'Connected to redpanda broker at {config.kafka_broker_address}')
+logger.debug(f'Output topic: {config.kafka_output_topic}')
 
-
-def produce_data(data: pd.DataFrame) -> None:
-
-    data: List[Dict] = data.to_dict(orient='records')
-
-    for record in data:
-
-        timestamp = int(datetime.strptime(record['date'],'%Y-%m-%d').timestamp()) * 1000
-        with app.get_producer() as producer:
-            
-            message = output_topic.serialize(
-                key=record['file_path'],
-                value=record, 
-            )
-
-            producer.produce(
-                topic=output_topic.name,
-                value=message.value,
-                key=message.key,
-                timestamp=timestamp
-            )
 
             
 def fetch_parse_data(year, quarter):
@@ -83,6 +63,30 @@ def fetch_parse_data(year, quarter):
         
         logger.debug(f'Fetched data for {year} {quarter}')
         return df
+
+
+def produce_data(data: pd.DataFrame) -> None:
+
+    data: List[Dict] = data.to_dict(orient='records')
+
+    for record in data:
+
+        timestamp = int(datetime.strptime(record['date'],'%Y-%m-%d').timestamp()) * 1000
+        key = xxhash.xxh64(record['file_path']).hexdigest()
+
+        with app.get_producer() as producer:
+            
+            message = output_topic.serialize(
+                key=key,
+                value=record, 
+            )
+
+            producer.produce(
+                topic=output_topic.name,
+                value=message.value,
+                key=message.key,
+                timestamp=timestamp
+            )
 
 
 def get_historic_data(form_type: str, years: int) -> None:
