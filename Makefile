@@ -24,3 +24,10 @@ run-prod-master: build-master
 	-it --network redpanda-network \
 	--env-file master-index/.env \
 	--name master-index master-index
+
+
+run-prod-scraper: build-scraper
+	docker run \
+	-it --network redpanda-network \
+	--env-file scraper/.env \
+	--name scraper scraper

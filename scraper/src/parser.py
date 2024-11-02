@@ -6,9 +6,9 @@ from typing import Text, List, Dict
 import sys
 import os
 import time
+from loguru import logger
 # Get the absolute path to the 'scraper' directory
-top_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-sys.path.append(top_directory)
+
 
 from const import headers, root, derivative_root, insider_paths, paths, derivative_paths
 
@@ -25,10 +25,10 @@ class Form4Parser:
 
     def __init__(self,  url):
         self.url = self.BASE_URL + url
-        print(self.url)
+        logger.info(self.url)
       #  time.sleep(30)
         self.xml = self.get_filing()
-
+        
     
     def get_filing(self) -> Text:
         filing = requests.get(self.url, headers=headers).text
@@ -59,7 +59,7 @@ class Form4Parser:
                         paths,
                     )
                 )
-   
+
         return filing_data
 
     def _process_transaction(self, etree: ET.ElementTree, paths: dict) -> dict:

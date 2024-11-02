@@ -8,11 +8,7 @@ from io import BytesIO
 import xxhash
 import json
 from itertools import islice
-headers = {
-    'User-Agent': 'CompanyE InvestmentServices admin@companye.com',
-    'Accept-Encoding': 'gzip, deflate',
-    'Host': 'www.sec.gov'
-}
+from datetime import timedelta
 
 
 app = Application(
@@ -34,19 +30,34 @@ output_topic = app.topic(
 )
 
 
+
+def last_n_days(n: int) -> int:
+    return (datetime.now() - timedelta(days=n)).timestamp() * 1000
+
 def consume_data() -> List[str]:
     
     urls = []
+
     with app.get_consumer() as consumer:
 
         consumer.subscribe(topics = [input_topic.name])
-        counter = 0
+        #counter = 0
 
         while True:
             message = consumer.poll(1)
-            counter += 1
-            if counter > 100:
-                break
+     
+            try:  
+                if int(message.timestamp()[1]) < last_n_days(config.timedelta):
+                    logger.debug('Finished scraping!')
+                    break
+            except:
+                logger.debug('Coudln\'t get timestamp')
+                pass
+           
+
+            #counter += 1
+            #if counter > 100:
+                #break
             try:
                 url = json.loads(message.value().decode('utf-8'))['file_path']
                 urls.append(url)
@@ -56,7 +67,7 @@ def consume_data() -> List[str]:
                 
     return urls
 
-### UP TO HERE IS GOOD
+
 def parse_4Fs(urls: List[str]) -> List[Dict]:
 
     transactions = []
@@ -96,9 +107,11 @@ def produce_data(data: List[dict]) -> None:
                 key=message.key,
                 timestamp=timestamp
             )
-            logger.debug('Produced message to topic: {topic}', topic=output_topic.name)
-            import time
-            time.sleep(10)
+            logger.debug(f'Produced message to topic: {output_topic.name}')
+            #import time
+            #time.sleep(10)
+
+
 if __name__ == '__main__':
 
     urls = consume_data()
@@ -107,13 +120,3 @@ if __name__ == '__main__':
 
 
 # TODO
-# 1. Create a connection to the redpanda broker & retrieve urls
-# 2. Fetch the data from the urls
-# 3. Parse the data
-# 3.1 Developed Trade classes structures for 4Fs
-# 3.2 Hashing logic for key with xxhash
-
-# 4 Refactor Const and makefile to be one single file for all commands in the project
-# 3.3 Configure all the APIs & data providers
-# 4. Produce the data to the redpanda broker
-# 5. Develop logic to consume data based on last days' trades

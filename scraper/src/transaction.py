@@ -5,10 +5,7 @@ import os
 import xml.etree.ElementTree as ET
 from pprint import pprint
 
-top_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-sys.path.append(top_directory)
 
-# Now you can import your modules
 from const import hold, derivative_hold, holding_ownership, holding_amounts
 
 class EssentialTrade(BaseModel):
