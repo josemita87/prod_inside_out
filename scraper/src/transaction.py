@@ -8,6 +8,7 @@ from pprint import pprint
 
 from const import hold, derivative_hold, holding_ownership, holding_amounts
 
+
 class EssentialTrade(BaseModel):
 
     class Config:
@@ -47,7 +48,7 @@ class EssentialTrade(BaseModel):
     d_coding: Optional[str] = None
     d_footnote_id: Optional[str] = None
 
-    #Derived Fields
+    # Derived Fields
     is_derivative: bool = False
     is_equity_swap: bool = False
     direct_holding: Optional[int] = 0
@@ -56,7 +57,6 @@ class EssentialTrade(BaseModel):
     d_indirect_holding: Optional[int] = 0
     owner_code: str = None
 
-        
     def _set_is_derivative(self) -> None:
         """Determine if this is a derivative trade."""
         self.is_derivative = self.shares == 0
@@ -64,21 +64,19 @@ class EssentialTrade(BaseModel):
     def _set_equity_swap(self) -> None:
         """Set various flags based on attributes."""
         self.is_equity_swap = str(self.equity_swap).lower() in ['true', '1']
-        
 
     def _set_rule105b1(self) -> str:
         """Determine if this is a Rule 10b5-1 trade."""
         if str(self.rule105b1).lower() in ['true', '1']:
             self.rule105b1 = True
-        
-        else: 
+
+        else:
 
             id = self.d_footnote_id if self.is_derivative else self.footnote_id
             for footnote in self.xml.findall('footnotes/footnote'):
                 if footnote.get('id') == id and '10b5-1' in footnote.text:
                     self.rule105b1 = True
                     break
-    
 
     def _handle_multiple_ownerships(self):
         """Compute direct and indirect holdings."""
@@ -109,10 +107,10 @@ class EssentialTrade(BaseModel):
 
     def _handle_owner_code(self):
         self.owner_code = "".join(
-            '1' if str(pos).lower() in['1', 'true'] else '0' for pos in [
-                self.director, 
-                self.officer, 
-                self.ten_percent_owner, 
+            '1' if str(pos).lower() in ['1', 'true'] else '0' for pos in [
+                self.director,
+                self.officer,
+                self.ten_percent_owner,
                 self.other
             ]
         )
@@ -125,7 +123,7 @@ class EssentialTrade(BaseModel):
         self._set_rule105b1()
         self._handle_owner_code()
         self._handle_multiple_ownerships()
-        
+
         insider_data = {
             'company_cik': self.company_cik,
             'ticker': self.ticker,

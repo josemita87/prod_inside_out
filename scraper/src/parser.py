@@ -28,8 +28,7 @@ class Form4Parser:
         logger.info(self.url)
       #  time.sleep(30)
         self.xml = self.get_filing()
-        
-    
+
     def get_filing(self) -> Text:
         filing = requests.get(self.url, headers=headers).text
         return ET.fromstring(re.search(self.XML_DELIM, filing, re.DOTALL).group(1))
@@ -48,7 +47,7 @@ class Form4Parser:
 
         # Get both non-derivative and derivative transactions
         for root, paths in params:
-            
+
             # Find all transactions in the filing for the given root (derivative or non-derivative)
             for etree in self.xml.findall(root):
 
@@ -84,7 +83,7 @@ class Form4Parser:
         """
 
         for key, path in paths.items():
-            
+
             try:
                 element = etree.find(path)
 

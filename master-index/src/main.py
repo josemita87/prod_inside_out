@@ -22,15 +22,14 @@ headers = {
 app = Application(config.kafka_broker_address, loglevel='CRITICAL')
 output_topic = app.topic(
     name=config.kafka_output_topic,
-    value_serializer='json', 
+    value_serializer='json',
     key_serializer='string'
-    )
+)
 
 logger.debug(f'Connected to redpanda broker at {config.kafka_broker_address}')
 logger.debug(f'Output topic: {config.kafka_output_topic}')
 
 
-            
 def fetch_parse_data(year, quarter):
 
     url = f'https://www.sec.gov/Archives/edgar/full-index/{year}/{quarter}/master.idx'
@@ -60,7 +59,7 @@ def fetch_parse_data(year, quarter):
             dtype=str,
             encoding='utf-8'
         )
-        
+
         logger.debug(f'Fetched data for {year} {quarter}')
         return df
 
@@ -71,14 +70,15 @@ def produce_data(data: pd.DataFrame) -> None:
 
     for record in data:
 
-        timestamp = int(datetime.strptime(record['date'],'%Y-%m-%d').timestamp()) * 1000
+        timestamp = int(datetime.strptime(
+            record['date'], '%Y-%m-%d').timestamp()) * 1000
         key = xxhash.xxh64(record['file_path']).hexdigest()
 
         with app.get_producer() as producer:
-            
+
             message = output_topic.serialize(
                 key=key,
-                value=record, 
+                value=record,
             )
 
             producer.produce(
@@ -115,9 +115,9 @@ if __name__ == '__main__':
 # TODO
 # 1. Stablish connection with redpanda
 # 2. Produce topics Finsish microservice
-#2.2 Check why is the key of the topic failing
-#2.3 Check why timestamp is failing
+# 2.2 Check why is the key of the topic failing
+# 2.3 Check why timestamp is failing
 
-#2.4 Effectively manage cases of duplication ( avoid duplicates)
+# 2.4 Effectively manage cases of duplication ( avoid duplicates)
 # 3. Dockerize microservice
 # 4. Check whether the code can be reused to parse 13f forms

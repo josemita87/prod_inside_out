@@ -11,6 +11,7 @@ class Config(BaseSettings):
     kafka_input_topic: str = Field(..., env='KAFKA_INPUT_TOPIC') 
     kafka_output_topic: str = Field(..., env='KAFKA_OUTPUT_TOPIC')
     timedelta: int = Field(..., env='TIMEDELTA')
+    test_size: int = Field(..., env='TEST_SIZE')
     
     # Dev settings
     

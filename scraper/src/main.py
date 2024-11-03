@@ -37,7 +37,6 @@ def last_n_days(n: int) -> int:
 def consume_data() -> List[str]:
     
     urls = []
-
     with app.get_consumer() as consumer:
 
         consumer.subscribe(topics = [input_topic.name])
@@ -45,7 +44,7 @@ def consume_data() -> List[str]:
 
         while True:
             message = consumer.poll(1)
-     
+           
             try:  
                 if int(message.timestamp()[1]) < last_n_days(config.timedelta):
                     logger.debug('Finished scraping!')
@@ -68,33 +67,37 @@ def consume_data() -> List[str]:
     return urls
 
 
-def parse_4Fs(urls: List[str]) -> List[Dict]:
+def parse_and_produce_4Fs(urls: List[str], buffer_size: int) -> None:
 
-    transactions = []
-
-    for url in islice(urls, 10):
-        parser = Form4Parser(url)
-        transactions.extend(
-            parser.create_txs()
+    buffer = []
+    
+    for url in islice(urls, config.test_size):
+        
+        buffer.extend(
+            Form4Parser(url).create_txs()
         )
-
-    return transactions
+        if len(buffer) >= buffer_size:
+            produce_data(buffer)
+            buffer = []
+    
+    if buffer:
+        produce_data(buffer)
 
 
 def produce_data(data: List[dict]) -> None:
+    
+    with app.get_producer() as producer:
+        for record in data:
 
-    for record in data:
-
-        timestamp = int(datetime.strptime(
-            record['date'], '%Y-%m-%d').timestamp()
-        ) * 1000
-        
-        key = xxhash.xxh64(
-            record['link'] + record['remaining_shares'] +
-            ('1' if record['derivative'] else '0')
-        ).hexdigest()
-        
-        with app.get_producer() as producer:
+            timestamp = int(datetime.strptime(
+                record['date'], '%Y-%m-%d').timestamp()
+            ) * 1000
+            
+            key = xxhash.xxh64(
+                record['link'] + record['remaining_shares'] +
+                ('1' if record['derivative'] else '0')
+            ).hexdigest()
+            
 
             message = output_topic.serialize(
                 key=key,
@@ -107,16 +110,15 @@ def produce_data(data: List[dict]) -> None:
                 key=message.key,
                 timestamp=timestamp
             )
-            logger.debug(f'Produced message to topic: {output_topic.name}')
-            #import time
-            #time.sleep(10)
+                
+    logger.debug(f"Produced {len(data)} messages")
 
 
 if __name__ == '__main__':
 
     urls = consume_data()
-    transactions = parse_4Fs(urls)
-    produce_data(transactions)
+    transactions = parse_and_produce_4Fs(urls, config.buffer_size)
+    
 
 
-# TODO
+
