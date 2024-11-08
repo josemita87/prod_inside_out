@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "yahoo-connect"
+version = "0.1.0"
+description = ""
+authors = ["josema <savetudrac@duck.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.13"  # Compatible range for hopsworks and hsfs
+loguru = "^0.7.2"
+pydantic-settings = "^2.6.1"
+pandas = "^2.1"
+hopsworks = "^3.7.0"
+
