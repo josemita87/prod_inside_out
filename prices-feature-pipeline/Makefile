@@ -1,6 +1,6 @@
 
 
 
-run-dev-test:
+run-dev:
 	@echo "Running the development environment"
-	cd yahoo_connect && poetry run python -m tests.test
+	cd yahoo_connect && poetry run python -m src.main

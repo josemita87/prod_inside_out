@@ -93,12 +93,20 @@ def produce_data(data: List[dict]) -> None:
                 record['date'], '%Y-%m-%d').timestamp()
             ) * 1000
             
-            key = xxhash.xxh64(
-                record['link'] + record['remaining_shares'] +
-                ('1' if record['derivative'] else '0')
-            ).hexdigest()
-            
+            try:
+                key = xxhash.xxh64(
+                    record['link'] + record['remaining_shares'] +
+                    ('1' if record['derivative'] else '0')
+                ).hexdigest()
 
+            except:
+                #Create a key for the record without using link for when it's not available
+                key = xxhash.xxh64(
+                    record['remaining_shares'] +
+                    ('1' if record['derivative'] else '0')
+                ).hexdigest()
+
+            
             message = output_topic.serialize(
                 key=key,
                 value=record,

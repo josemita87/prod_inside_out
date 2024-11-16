@@ -11,4 +11,5 @@ loguru = "^0.7.2"
 pydantic-settings = "^2.6.1"
 pandas = "^2.1"
 hopsworks = "^3.7.0"
+yfinance = "^0.2.49"
 

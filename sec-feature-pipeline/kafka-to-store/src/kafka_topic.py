@@ -2,11 +2,11 @@
 from quixstreams import Application
 import json
 from typing import Dict, Generator, Tuple
-
-
+from loguru import logger
+import pandas as pd
+from datetime import datetime
 class Connection:
     def __init__(self, broker_address, input_topic_name):
-        
         
         self.app = Application(
             broker_address=broker_address,
@@ -28,11 +28,27 @@ class Connection:
             consumer.subscribe(topics=[self.input_topic.name])
 
             while True:
-
-                if message:= consumer.poll() is None:
+                
+                message = consumer.poll()
+                if not message:
+                    logger.debug("Not any messages left to consume")
                     return True, buffer
-                breakpoint()
-                buffer.append(json.loads(message.value().decode('utf-8')))
+            
+                if message:
+                    # Decode the key and value & add to buffer
+                    key = {'key': message.key().decode('utf-8')}
+                    values = json.loads(message.value().decode('utf-8'))
+                    
+                    # Convert values to string to avoid type errors
+                    updated_values = {k: str(v) for k, v in values.items()}
+    
+                    # Convert the 'date' field back to a datetime object if required
+                    if 'date' in updated_values:
+                        updated_values['date'] = datetime.strptime(updated_values['date'], '%Y-%m-%d')
+                    
+                    merged = {**key, **updated_values}
+                    buffer.append(merged)
+                    
                 
                 if len(buffer) >= buffer_size:
                     return False, buffer

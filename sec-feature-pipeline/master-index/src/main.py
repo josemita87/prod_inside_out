@@ -113,11 +113,3 @@ if __name__ == '__main__':
     get_historic_data(config.form_type, config.years)
 
 # TODO
-# 1. Stablish connection with redpanda
-# 2. Produce topics Finsish microservice
-# 2.2 Check why is the key of the topic failing
-# 2.3 Check why timestamp is failing
-
-# 2.4 Effectively manage cases of duplication ( avoid duplicates)
-# 3. Dockerize microservice
-# 4. Check whether the code can be reused to parse 13f forms

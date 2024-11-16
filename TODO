@@ -1,9 +1,8 @@
 
 #Create Prices Pipeline for smart & continuous handling and retrieval of historical prices dataset for all tickers
+    #Possible alternatives: reading and pushing data for batches of stock (1000).
 1. Finish setting up connection with hopsworks for the prices pipeline
 2. Check if the whole prices dataframe can be handled at once. If not, look for alternatives to handle it.
-    #Possible alternatives: reading and pushing data for batches of stock (1000).
-
 #Create 4th microservice within sec feature pipeline
 3. Add a connection to 4f pipeline to hopsworks:
     3.1 Develop kafka fetching data logic
