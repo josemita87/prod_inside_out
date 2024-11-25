@@ -19,30 +19,6 @@ class Connection:
         self.fs = self.project.get_feature_store()
     
     
-    def connect_feature_group(
-            self, 
-            feature_group_name, 
-            feature_group_version, 
-            primary_key, 
-            event_time,
-            inference_blueprint
-        ) -> hopsworks:
-
-        #Get feature group object
-        fg = self.fs.get_or_create_feature_group(
-            name=feature_group_name,
-            version=feature_group_version,
-            primary_key=[primary_key],
-            event_time=event_time
-        )
-        
-        #Initialize data for inference (if fg doesn't exist)
-        blueprint = reduce_mem_storage(pd.DataFrame([inference_blueprint]))
-        fg.insert(blueprint)
-
-        return fg
-    
-
     def _validate_dataframe_types(self, data: pd.DataFrame, expected_schema: dict) -> pd.DataFrame:
         """
         Validate and coerce the data types of the DataFrame to match the expected schema.
@@ -54,16 +30,26 @@ class Connection:
     def push_data(
             self,
             data: pd.DataFrame,
-            feature_group: Any, 
-            expected_schema:dict
+            feature_group_name: str,
+            feature_group_version: int,
+            schema: dict
         ) -> None:
 
+
+        fg = self.fs.get_or_create_feature_group(
+            name=feature_group_name,
+            version=feature_group_version,
+            primary_key=['key'],
+            event_time='date'
+        )
+
+        breakpoint()
         # Validate and coerce the DataFrame
-        data = self._validate_dataframe_types(data, expected_schema)
+        data = self._validate_dataframe_types(data, schema)
         
         # Insert the data into the feature group
         try:
-            feature_group.insert(data)
+            fg.insert(data)
             logger.debug(f"Data pushed to feature store successfully.")
 
         except Exception as e:

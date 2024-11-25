@@ -2,8 +2,9 @@ from config import config
 import time
 import pandas as pd
 import kafka_topic, feature_store
-from src.feature_store import reduce_mem_storage, data_cleaning
+from src import feature_store
 from loguru import logger 
+
 # Connect to the Kafka topic
 topic = kafka_topic.Connection(
     broker_address=config.kafka_broker_address,
@@ -16,15 +17,6 @@ feature_store = feature_store.Connection(
     api_key=config.api_key,
 )
 
-# Connect to the feature group
-feature_group = feature_store.connect_feature_group(
-    feature_group_name=config.feature_group_name,
-    feature_group_version=config.feature_group_version,
-    primary_key='key',
-    event_time='date',
-    inference_blueprint=config.inference_blueprint
-)
-
 
 if __name__ == "__main__":
     is_finished = False
@@ -35,13 +27,14 @@ if __name__ == "__main__":
 
         if data:
             logger.debug(pd.DataFrame(data)['ticker'].unique())
-            data:pd.DataFrame = data_cleaning(data)
-            data:pd.DataFrame = reduce_mem_storage(data)
+            data:pd.DataFrame = feature_store.data_cleaning(data)
+            data:pd.DataFrame = feature_store.reduce_mem_storage(data)
             logger.debug(len(data))
             logger.debug(data['ticker'].unique())
            
             feature_store.push_data(
                 data, 
-                feature_group, 
-                config.expected_schema
+                feature_group_name=config.feature_group_name,
+                feature_group_version=config.feature_group_version, 
+                schema = config.expected_schema
             )

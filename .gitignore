@@ -1,67 +1,47 @@
-# Byte-compiled files
+# Ignore all Python files by default
+*.py
+
+# But not these directories where actual code is located
+!src/
+!app/
+!project_name/
+
+# Ignore virtual environment folders
+venv/
+env/
+
+# Ignore .pyc, .pyo, .pyd files (compiled files)
 __pycache__/
 *.py[cod]
-
-# Virtual environment folders
-venv/
-#.env/
-#env/
-pyvenv.cfg
-pip-log.txt
-
-# Virtual environment scripts
-bin/activate
-bin/activate.csh
-bin/activate.fish
-bin/activate.ps1
-
-# Virtual environment Python interpreter settings
 *.pyo
 *.pyd
-*.so
-*.dll
-*.a
-*.lib
-*.deactivate
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
+# Ignore site-packages (dependencies installed by pip, poetry, etc.)
+site-packages/
 
-# Logs and database files
+# Ignore all logs, databases, temporary files, etc.
 *.log
 *.db
 *.sqlite3
 
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# IDE files
+# Ignore IDE and editor-specific files
 .vscode/
 .idea/
 *.sublime-workspace
 *.sublime-project
 
-# Python environment management tools
-Pipfile
-Pipfile.lock
-#poetry.lock
-#pyproject.toml
-
-# Testing and Coverage results
-.tox/
-.coverage
-coverage.xml
-nosetests.xml
-test-reports/
-pytest_cache/
-*.prof
-
-# Ignore dependencies installed in site-packages or similar
-site/
-
-# Kafka volumes
-**/state
-
-# Ignore credentials.env
+# Ignore sensitive credentials files
 **/.credentials.env
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore dependency management files (if you don't want to track them)
+# Pipfile
+# Pipfile.lock
+# poetry.lock
+# pyproject.toml
+
+# Ignore any other unnecessary files (generated files)
+*.swp
+*.tmp

@@ -103,7 +103,8 @@ class Connection:
             )
 
             logger.debug(f"Data pushed to feature store")
-            time.sleep(30)
+            time.sleep(100)
+            logger.debug('Ingesting data...')
 
 
 # Auxiliary function

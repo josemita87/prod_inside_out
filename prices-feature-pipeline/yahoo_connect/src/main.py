@@ -83,18 +83,7 @@ if __name__ == '__main__':
          feature_group_version=config.feature_group_version,
     ).tolist()
     
-    tickers = [
-    'AAPL', 'GOOGL', 'AMZN', 'MSFT', 'TSLA', 'META', 'NVDA', 'NFLX', 'BABA', 'INTC',
-    'AMD', 'BA', 'WMT', 'DIS', 'GS', 'IBM', 'V', 'MA', 'JPM', 'CVX', 'XOM', 
-    'PYPL', 'AMD', 'INTU', 'NVDA', 'SNAP', 'SHOP', 'GOOG', 'AMZN', 'PEP', 'KO', 
-    'MCD', 'UNH', 'PFE', 'BA', 'T', 'LMT', 'RTX', 'JNJ', 'MS', 'AMT', 'GS', 
-    'CVX', 'XOM', 'NEE', 'MMM', 'CAT', 'DE', 'CSCO', 'INTC', 'GM', 'F', 'CHWY',
-    'FTNT', 'BIDU', 'EA', 'SPY', 'QQQ', 'IWM', 'VTI', 'DIA', 'XLY', 'XLF', 'XLI',
-    'XLC', 'XLE', 'XLB', 'XLV', 'XBI', 'SMH', 'ARKK', 'TSM', 'SHOP', 'SQ', 'ZM',
-    'BIDU', 'PDD', 'SOFI', 'PINS', 'TWTR', 'ZM', 'RBLX', 'TSLA', 'LULU', 'ROKU',
-    'ATVI', 'FSLY', 'PLTR', 'SPCE', 'DKNG', 'RIVN', 'UPST', 'PTON', 'LCID', 'SNOW',
-    'PLUG', 'ENPH', 'AMD', 'NKE', 'TRIP', 'BYND', 'SQ', 'AMD', 'ULTA', 'VEEV', 'SHOP'
-    ]
+    
 
     #Process data in ticker batches
     for i in range(0, len(tickers), config.buffer_size):
@@ -123,3 +112,4 @@ if __name__ == '__main__':
             config.feature_group_version
         )
 
+    logger.debug('Finished processing all tickers')

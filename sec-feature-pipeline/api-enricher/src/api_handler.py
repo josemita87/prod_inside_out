@@ -96,12 +96,15 @@ class ApiHandler():
         except:
             self._log_error(tx, self.failed_mcaps_path, 'missing_mcap')
 
-#TODO
-# Add additional fallback logic in case the first api fails!
+
     def _get_exchange(self, tx: dict) -> str:
         try:
             return self.mapper['exchange'].get(tx.get('company_cik', None), None)
         except:
+            ticker = yf.Ticker(tx.get('ticker'))
+            return ticker.info.get('exchange')
+        
+        finally:
             self._log_error(tx, self.failed_exchange_path, 'missing_exchange')
 
 

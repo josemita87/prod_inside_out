@@ -9,14 +9,32 @@ build-yahoo:
 	@echo "Building the yahoo container"
 	docker build -t yahoo_connect yahoo_connect/.
 
+build-target:
+	@echo "Building the target container"
+	docker build -t target target/.
+
 stop-yahoo:
 	@if [ $$(docker ps -a -q -f name=yahoo_connect) ]; then \
 		docker stop yahoo_connect; \
 		docker rm yahoo_connect; \
 	fi
 
+stop-target:
+	@if [ $$(docker ps -a -q -f name=target) ]; then \
+		docker stop target; \
+		docker rm target; \
+	fi
+
+
 run-prod-yahoo: stop-yahoo build-yahoo
 	docker run \
 	-it --network redpanda-network \
 	--env-file yahoo_connect/.env \
 	--name yahoo_connect yahoo_connect
+
+
+run-prod-target: stop-target build-target
+	docker run \
+	-it --network redpanda-network \
+	--env-file target/.env \
+	--name target target
