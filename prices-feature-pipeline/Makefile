@@ -13,6 +13,11 @@ build-target:
 	@echo "Building the target container"
 	docker build -t target target/.
 
+build-avg:
+	@echo "Building the avg container"
+	docker build -t avg-target avg-target/.
+
+
 stop-yahoo:
 	@if [ $$(docker ps -a -q -f name=yahoo_connect) ]; then \
 		docker stop yahoo_connect; \
@@ -23,6 +28,12 @@ stop-target:
 	@if [ $$(docker ps -a -q -f name=target) ]; then \
 		docker stop target; \
 		docker rm target; \
+	fi
+
+stop-avg:
+	@if [ $$(docker ps -a -q -f name=avg-target) ]; then \
+		docker stop avg-target; \
+		docker rm avg-target; \
 	fi
 
 
@@ -38,3 +49,10 @@ run-prod-target: stop-target build-target
 	-it --network redpanda-network \
 	--env-file target/.env \
 	--name target target
+
+
+run-prod-avg: stop-avg build-avg
+	docker run \
+	-it --network redpanda-network \
+	--env-file avg-target/.env \
+	--name avg-target avg-target
