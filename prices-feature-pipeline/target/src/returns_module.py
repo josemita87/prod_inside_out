@@ -26,7 +26,7 @@ class Mapper:
 
             # Compute the average % change in price
             tx['pct_change'] = round((end_price - start_price) / start_price, 5)
-            logger.debug(f"Computed % change for {tx['ticker']} on {tx['date']}")
+            
            
         # Track errors
         except Exception as e:
@@ -39,9 +39,9 @@ class Mapper:
 
         return tx
 
-    def process_ticker(self, ticker: str, transactions: list[dict], period: int):
+    def process_ticker(self, ticker: str, transactions: list[dict], period: int) -> pd.DataFrame:
         """
-        Processes all transactions for a given ticker and updates the prices DataFrame.
+        Processes all transactions for a given ticker.
         After processing all transactions for a ticker, it removes the processed ticker's data from `self.prices`.
         """
         # Process all transactions for this ticker

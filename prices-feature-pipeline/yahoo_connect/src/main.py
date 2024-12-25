@@ -49,11 +49,9 @@ def fetch_data_from_yahoo(prices: pd.DataFrame, tickers: list[str]) -> pd.DataFr
 
    
         # Convert the Series into a DataFrame with custom column names
-        new_data = new_data.reset_index() 
+        new_data.reset_index(inplace=True) 
         new_data['ticker'] = ticker
         new_data.columns = ['date', 'close', 'ticker'] 
-
-        logger.debug(f"Fetching data for {ticker} from {offset if offset else 'beggining'}...")
         
         # Reduce memory usage of the dataframe before appending it
         new_data = reduce_mem_storage(new_data)
@@ -83,8 +81,6 @@ if __name__ == '__main__':
          feature_group_version=config.feature_group_version,
     ).tolist()
     
-    
-
     #Process data in ticker batches
     for i in range(0, len(tickers), config.buffer_size):
 
@@ -101,10 +97,12 @@ if __name__ == '__main__':
             feature_view_version=config.feature_view_version,
             inference_blueprint=config.inference_blueprint
         )
+        logger.debug(current_data)
 
         #Fetch the latest data from Yahoo Finance for the given processing tickers
         new_data = fetch_data_from_yahoo(current_data, processing_tickers)
-        
+        logger.debug(new_data)
+
         #Push the new data to the feature store (append mode)
         feature_store.push_data(
             new_data, 

@@ -21,7 +21,6 @@ class Connection:
         self.fs = self.project.get_feature_store()
     
     
-
     def fetch_ticker_data(
         self,
         feature_group_name: hopsworks,
@@ -34,7 +33,7 @@ class Connection:
             primary_key='key',
             event_time='date'
         )
-       
+        
         data: pd.DataFrame = fg.read()
         tickers = data['ticker'].unique()
         
@@ -60,6 +59,7 @@ class Connection:
 
         #Insert dummy data infer schema
         blueprint = reduce_mem_storage(pd.DataFrame(inference_blueprint))
+  
         fg.insert(blueprint)
 
         try:
@@ -74,7 +74,6 @@ class Connection:
             return prices_fv.get_batch_data()
         
         except:  
-            logger.debug('Could not find data in feature store')
             return pd.DataFrame()
         
 
@@ -97,13 +96,13 @@ class Connection:
         
             fg.insert(
                 data, write_options = {
-                    'start_offline_materialization':False,
+                    'start_offline_materialization':True,
                     'mode':'append' 
                 }
             )
 
             logger.debug(f"Data pushed to feature store")
-            time.sleep(100)
+            time.sleep(50)
             logger.debug('Ingesting data...')
 
 

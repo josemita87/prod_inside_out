@@ -1,7 +1,8 @@
 from config import config
 import time
 import pandas as pd
-from src import feature_store, kafka_topic
+from src.feature_store import Connection, validate_and_reduce_mem_storage, data_cleaning
+import src.kafka_topic as kafka_topic
 from loguru import logger 
 
 # Connect to the Kafka topic
@@ -13,7 +14,7 @@ topic = kafka_topic.Connection(
 )
 
 # Connect to the feature store
-fs = feature_store.Connection(
+feature_store = Connection(
     project_name=config.project_name,
     api_key=config.api_key,
 )
@@ -36,10 +37,10 @@ if __name__ == "__main__":
         )
             
         if data:
-            data:pd.DataFrame = feature_store.data_cleaning(data)
-            data:pd.DataFrame = feature_store.reduce_mem_storage(data)
+            data:pd.DataFrame = data_cleaning(data)
+            data:pd.DataFrame = validate_and_reduce_mem_storage(data)
             
-            fs.push_data(
+            feature_store.push_data(
                 data, 
                 feature_group_name=config.feature_group_name,
                 feature_group_version=config.feature_group_version, 
