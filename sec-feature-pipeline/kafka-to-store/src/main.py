@@ -1,17 +1,20 @@
 from config import config
 import time
 import pandas as pd
-from src import feature_store, kafka_topic
+from src.feature_store import Connection, validate_and_reduce_mem_storage, data_cleaning
+import src.kafka_topic as kafka_topic
 from loguru import logger 
 
 # Connect to the Kafka topic
 topic = kafka_topic.Connection(
-    broker_address=config.kafka_broker_address,
-    input_topic_name=config.kafka_input_topic,
+    config.kafka_broker_address,
+    config.kafka_input_topic,
+    config.consumer_group, 
+    config.auto_offset_reset,
 )
 
 # Connect to the feature store
-fs = feature_store.Connection(
+feature_store = Connection(
     project_name=config.project_name,
     api_key=config.api_key,
 )
@@ -20,17 +23,29 @@ fs = feature_store.Connection(
 if __name__ == "__main__":
     is_finished = False
 
+    # Logs
+    logger.info('Kafka to Feature Store Microservice Started')
+    logger.info(f'Connected to Kafka broker at {config.kafka_broker_address}')
+    logger.info(f'Input topic: {config.kafka_input_topic}')
+    logger.info(f'ENV VARIABLES:\n ->Buffer Size: {config.buffer_size}\n ->Feature Group Name: {config.feature_group_name}\n ->Feature Group Version: {config.feature_group_version}\n ->Expected Schema: {config.expected_schema}\n')
+    
     while not is_finished:
-        is_finished, data = topic.consume_data(buffer_size=config.buffer_size)
-
-        if data:
+        
+        is_finished, data = topic.consume_data(
+            buffer_size=config.buffer_size, 
+            timeout=config.poll_timeout
+        )
             
-            data:pd.DataFrame = feature_store.data_cleaning(data)
-            data:pd.DataFrame = feature_store.reduce_mem_storage(data)
-            logger.debug(data)       
-            fs.push_data(
+        if data:
+            data:pd.DataFrame = data_cleaning(data)
+            data:pd.DataFrame = validate_and_reduce_mem_storage(data)
+            
+            feature_store.push_data(
                 data, 
                 feature_group_name=config.feature_group_name,
                 feature_group_version=config.feature_group_version, 
                 schema = config.expected_schema
             )
+        else:
+            logger.info('No more messages to consume. Exiting kafka-to-store...')
+            break

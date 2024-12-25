@@ -91,7 +91,6 @@ class Connection:
             primary_key=['key'],
             event_time='date',
             online_enabled=False,
-            start_offline_materialization=True,
             description='Feature group containing returns data for insider transactions given specific filters'
         )
 
@@ -132,42 +131,39 @@ def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:
 
 
 #Auxiliary function
-def reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
+def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
     """
     Reduce the memory usage of the DataFrame by downcasting the numeric columns.
+    Invalid rows for each conversion will be dropped.
     """
-    try:
-        # Convert columns to categorical type
-        categorical_columns = ['company_cik', 'ticker', 'insider_cik', 'insider_name', 'owner_code', 
-        'acquired_disposed', 'ownership', 'coding', 'direct_holding', 'indirect_holding','exchange', 'sic']
-        for col in categorical_columns:
-            data[col] = data[col].astype('category')
+    data['link'] = data['link'].astype('str')
 
-        # Convert booleans to actual boolean dtype
-        data['rule105b1'] = data['rule105b1'].astype('bool')
-        data['derivative'] = data['derivative'].astype('bool')
+    # Convert columns to categorical where appropriate
+    for col in ['company_cik', 'ticker', 'insider_cik', 'insider_name', 
+                'owner_code', 'exchange', 'acquired_disposed', 'coding', 'sic']:
+        data[col] = data[col].astype('category')
 
-       # Ensure numerical columns are correctly typed
-        numerical_columns = ['shares', 'price', 'remaining_shares', 'market_cap', 'pct_change']
-        for col in numerical_columns:
-            # Convert to numeric (coerce invalid entries to NaN)
-            data[col] = pd.to_numeric(data[col], errors='coerce')
-            
-            # Check if the column has only integer-compatible values
-            if data[col].dropna().mod(1).eq(0).all():
-                # Convert to int32 if all values are integers
-                data[col] = data[col].fillna(0).astype('int32')
-                
-            else:
-                # Otherwise, convert to float32
-                data[col] = data[col].astype('float32')
+    # Convert booleans to actual boolean dtype
+    for col in ['rule105b1', 'derivative', 'equity_swap', 'ownership']:
+        data[col] = data[col].astype('bool')
 
-        # Convert 'date' to datetime
-        data['date'] = pd.to_datetime(data['date'])
-    
-        return data
-    
-    except Exception as e:
-        logger.error(e)
-        breakpoint()
-        return data
+    # Convert numeric columns to more memory-efficient types
+    numeric_columns = {
+        'shares': 'int32',
+        'price': 'float32',
+        'remaining_shares': 'int32',
+        'direct_holding': 'int32',
+        'indirect_holding': 'int32',
+        'market_cap': 'int64',
+        'timestamp': 'int64',
+        'pct_change': 'float32',
+    }
+    for col, dtype in numeric_columns.items():
+        data[col] = pd.to_numeric(data[col], errors='coerce').astype(dtype)
+        data = data.dropna(subset=[col])  # Drop rows where conversion failed
+
+    # Convert 'date' to datetime
+    data['date'] = pd.to_datetime(data['date'], errors='coerce')
+    data = data.dropna(subset=['date'])  # Drop rows where 'date' conversion failed
+
+    return data

@@ -1,4 +1,4 @@
-from src.feature_store import Connection
+from src.feature_store import Connection, validate_and_reduce_mem_storage, data_cleaning
 from src.config import config
 import pandas as pd
 import dask.dataframe as dd
@@ -45,12 +45,14 @@ for ticker in set(tx['ticker'] for tx in txs):
         [tx for tx in txs if tx['ticker'] == ticker], 
         timedelta(days = config.delta_period)
     )
+    from loguru import logger
+    logger.debug(f"Processed {len(updated_txs)} transactions for {ticker}")
 
     # Clean data & reduce memory space
-    updated_txs = returns_module.reduce_mem_storage(
-        returns_module.data_cleaning(updated_txs)
+    updated_txs = validate_and_reduce_mem_storage(
+        data_cleaning(updated_txs)
     )
-
+    
     # Push data to fs
     if not updated_txs.empty:
         feature_store.push_data(

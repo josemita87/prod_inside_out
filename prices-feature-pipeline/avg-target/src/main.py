@@ -1,10 +1,10 @@
-from src.feature_store import Connection
+from src.feature_store import Connection, validate_and_reduce_mem_storage, data_cleaning
 from src.config import config
 import pandas as pd
 import dask.dataframe as dd
 from src import returns_module
 from datetime import timedelta
-
+from loguru import logger
 
 # Initialize connection to Hopsworks
 feature_store = Connection(
@@ -36,10 +36,11 @@ for ticker in tickers:
     )
 
     # Clean data & reduce memory space
-    updated_txs = returns_module.reduce_mem_storage(
-        returns_module.data_cleaning(updated_txs)
+    updated_txs = validate_and_reduce_mem_storage(
+        data_cleaning(updated_txs)
     )
 
+    logger.debug(f"Updated transactions for ticker {ticker}: {updated_txs}")
     # Push data to fs
     if not updated_txs.empty:
         feature_store.push_data(
