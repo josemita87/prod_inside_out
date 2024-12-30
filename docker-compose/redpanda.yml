@@ -1,6 +1,6 @@
 name: redpanda-broker
 networks:
-  redpanda_network:
+  redpanda-network:
     name: redpanda-network
     driver: bridge
     external: false
@@ -35,7 +35,7 @@ services:
     volumes:
       - redpanda-0:/var/lib/redpanda/data
     networks:
-      - redpanda_network
+      - redpanda-network
     ports:
       - 18081:18081
       - 18082:18082
@@ -45,7 +45,7 @@ services:
     container_name: redpanda-console
     image: docker.redpanda.com/redpandadata/console:v2.7.2
     networks:
-      - redpanda_network
+      - redpanda-network
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
     environment:

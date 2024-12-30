@@ -15,7 +15,9 @@ app = Application(
     broker_address=config.kafka_broker_address,
     consumer_group=config.consumer_group,
     auto_offset_reset=config.auto_offset_reset,
-    processing_guarantee=config.processing_guarantee
+    #processing_guarantee=config.processing_guarantee,
+    consumer_extra_config={'enable.auto.offset.store': True}
+           
 )
 
 input_topic = app.topic(
@@ -36,7 +38,7 @@ def last_n_days(n: int) -> int:
 def consume_data() -> List[str]:
     
     urls = []
-    with app.get_consumer() as consumer:
+    with app.get_consumer(auto_commit_enable=True) as consumer:
     
         consumer.subscribe(topics = [input_topic.name])
 
@@ -84,11 +86,13 @@ def produce_data(data: List[dict]) -> None:
     
     with app.get_producer() as producer:
         for record in data:
-
-            timestamp = int(datetime.strptime(
-                record['date'], '%Y-%m-%d').timestamp()
-            ) * 1000
-            
+            try:
+                timestamp = int(datetime.strptime(
+                    record['date'], '%Y-%m-%d').timestamp()
+                ) * 1000
+            except:
+                logger.error(record)
+                time.sleep(50)
             #Add timestamp to the record for future reference
             record['timestamp'] = timestamp
 

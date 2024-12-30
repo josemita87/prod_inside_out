@@ -73,15 +73,17 @@ class ApiHandler():
         # If the filing date is recent, query Yahoo Finance & append to the local dataset
         if fbd >= datetime(2024, 9, 1).date():
             ticker = tx.get('ticker')
-            mcap = yf.Ticker(ticker.info.get('marketCap'))
+            try:
+                mcap = yf.Ticker(ticker.info.get('marketCap'))
 
-            pd.DataFrame(
-                [[ticker, mcap, fbd]],
-                columns=['ticker', 'mcap', 'date']
-            ).to_parquet(self.mcaps_path, engine='pyarrow', append=True)
+                pd.DataFrame(
+                    [[ticker, mcap, fbd]],
+                    columns=['ticker', 'mcap', 'date']
+                ).to_parquet(self.mcaps_path, engine='pyarrow', append=True)
 
-            return mcap
-
+                return mcap
+            except:
+                return None
         # Otherwise, look up the value directly in the local dataset
         try:
             

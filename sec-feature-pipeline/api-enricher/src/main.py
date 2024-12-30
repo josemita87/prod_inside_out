@@ -12,7 +12,8 @@ app = Application(
     broker_address=config.kafka_broker_address,
     consumer_group=config.consumer_group,
     auto_offset_reset=config.auto_offset_reset,
-    processing_guarantee=config.processing_guarantee
+    #processing_guarantee=config.processing_guarantee
+    consumer_extra_config={'enable.auto.offset.store': True}
 )
 
 input_topic = app.topic(
@@ -30,7 +31,7 @@ output_topic = app.topic(
 def consume_data() -> Generator[Dict, None, None]:
     buffer = []
 
-    with app.get_consumer() as consumer:
+    with app.get_consumer(auto_commit_enable = True) as consumer:
         consumer.subscribe(topics=[input_topic.name])
 
         while True:
@@ -38,8 +39,6 @@ def consume_data() -> Generator[Dict, None, None]:
 
             if message is None:
                 if buffer:
-                    #consumer.store_offsets(message)
-                    #consumer.commit_checkpoint()
                     yield from buffer
                     buffer.clear()  
                 

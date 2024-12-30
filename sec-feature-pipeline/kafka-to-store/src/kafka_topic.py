@@ -20,7 +20,8 @@ class Connection:
             broker_address=broker_address,
             consumer_group=consumer_group,
             auto_offset_reset=auto_offset_reset,
-            processing_guarantee=processing_guarantee
+            #processing_guarantee=processing_guarantee
+            consumer_extra_config={'enable.auto.offset.store': True}
             )
 
         self.input_topic = self.app.topic(
@@ -35,7 +36,7 @@ class Connection:
         We do not use generators because the aim is to push data in batches to the feature store."""
 
         buffer = []
-        with self.app.get_consumer() as consumer:
+        with self.app.get_consumer(auto_commit_enable=True) as consumer:
             consumer.subscribe(topics=[self.input_topic.name])
 
             while True:

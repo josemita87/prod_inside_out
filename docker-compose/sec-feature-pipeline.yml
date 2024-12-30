@@ -1,58 +1,71 @@
-version: '3.8'
-
 name: f4-feature_pipeline
 
 networks:
-  redpanda_network:
-    name: redpanda_network
+  redpanda-network:
+    name: redpanda-network
     driver: bridge
+    
+
+#Yaml anchor for shared variables
+x-shared-environment: &shared-env
+  KAFKA_BROKER_ADDRESS: "redpanda-0:9092"
+  AUTO_OFFSET_RESET: "earliest"
+  MODE: "historical"
+  PROJECT_NAME: "ml_system_c1"
+  PROCESSING_GUARANTEE: "at-least-once"
+  POLL_TIMEOUT: 30
+  YEARS: 1
+  FORM_TYPE: 4
+  TEST_TRIAL: "True"
+  TEST_SIZE: 1000
+  BUFFER_SIZE: 100
+  SLEEP_TIME: 0.2
+  DELAY: 15
+  
 
 services:
-  master-index:
-    build:
-      context: ../sec-feature-pipeline/master-index
-    networks:
-      - redpanda_network
-    env_file:
-      - ../sec-feature-pipeline/master-index/.env
-    ports:
-      - "8001:8001"
-    restart:
-      on-failure
-
   scraper:
     build:
       context: ../sec-feature-pipeline/scraper
     networks:
-      - redpanda_network
+      - redpanda-network
     env_file:
       - ../sec-feature-pipeline/scraper/.env
+    environment:
+      <<: *shared-env
     ports:
-      - "8002:8002"
-    restart:
-      always
+      - "8010:8010"
+    restart: always
+    #depends_on:
+      #- master-index
 
   api-enricher:
     build:
       context: ../sec-feature-pipeline/api-enricher
     networks:
-      - redpanda_network
+      - redpanda-network
     env_file:
       - ../sec-feature-pipeline/api-enricher/.env
+    environment:
+      <<: *shared-env
     ports:
-      - "8003:8003"
-    restart:
-      always
-
+      - "8009:8009"
+    restart: always
+    depends_on:
+      - scraper
+      
   kafka-to-store:
     build:
       context: ../sec-feature-pipeline/kafka-to-store
     networks:
-      - redpanda_network
+      - redpanda-network
     env_file:
+      - ../sec-feature-pipeline/kafka-to-store/.credentials.env
       - ../sec-feature-pipeline/kafka-to-store/.env
+    environment:
+      <<: *shared-env
     ports:
-      - "8004:8004"
-    restart:
-      always
-    
+      - "8008:8008"
+    restart: always
+    depends_on:
+      - api-enricher
