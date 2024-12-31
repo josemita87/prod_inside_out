@@ -6,13 +6,13 @@ class Mapper:
     def __init__(self, prices: pd.DataFrame):
         self.prices = prices  
       
-    def compute_returns(self, tx: dict, period: pd.Timedelta) -> dict:
+    def compute_returns(self, tx: dict, ticker:str, period: pd.Timedelta) -> dict:
 
         try:
             # Get the historical prices for the given ticker
             ticker_prices = self.prices[
-                self.prices['ticker'] == tx['ticker']
-            ].sort_values(by = 'date').compute() 
+                self.prices['ticker'] == ticker
+            ].sort_values(by='date').compute() 
 
             # Get the last price before the transaction date
             start_price = ticker_prices[
@@ -47,8 +47,7 @@ class Mapper:
         # Process all transactions for this ticker
         processed_transactions = []
         for tx in transactions:
-            #logger.debug(f"Processing transaction {transactions.index(tx) + 1} of {len(transactions)} for ticker {ticker}")
-            processed_tx = self.compute_returns(tx, period)
+            processed_tx = self.compute_returns(tx, ticker, period)
             processed_transactions.append(processed_tx)
 
         # Convert the processed transactions to a DataFrame

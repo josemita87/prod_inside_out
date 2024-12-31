@@ -4,109 +4,142 @@ from loguru import logger
 import time
 from hsfs.feature import Feature
 import numpy as np
+from config import config
 
 class Connection:  
-    def __init__(
-            self, 
-            project_name, 
-            api_key
-        )-> None:
+    def __init__(self)-> None:
 
         #Initialize connection to Hopsworks
-        self.project_name = project_name
-        self.api_key = api_key
         self.project = hopsworks.login(
-            project=self.project_name,
-            api_key_value=self.api_key,
+            project=config.project_name,
+            api_key_value=config.api_key,
         )
         self.fs = self.project.get_feature_store()
-    
-    
-    def fetch_4f_transactions(
-        self,
-        feature_group_name: hopsworks,
-        feature_group_version: int,
-        filters: list[dict] = None
-        ) -> pd.DataFrame:
-        
-        fg = self.fs.get_or_create_feature_group(
-            name=feature_group_name,
-            version=feature_group_version,
+
+        # Initialize feature group connections
+        self.fg_form4 = self.fs.get_or_create_feature_group(
+            name=config.feature_group_form4,
+            version=config.feature_group_version,
             primary_key='key',
             event_time='date'
         )
-       
-        # Apply filters
-        
-        if filters:        
-            for filter_dict in filters:
-                for key, value in filter_dict.items():
-                    fg = fg.filter(Feature(key) == value)
-
-
-        data: pd.DataFrame = fg.read(read_options={"use_hive": True})
-
-
-        return data.to_dict('records')
-        
-    
-    def fetch_price_data(
-        self,
-        feature_group_name: hopsworks,
-        feature_group_version: int,
-        filters: list[dict] = None,
-        ) -> pd.DataFrame:
-        
-        fg = self.fs.get_or_create_feature_group(
-            name=feature_group_name,
-            version=feature_group_version,
+        self.fg_prices = self.fs.get_or_create_feature_group(
+            name=config.feature_group_prices,
+            version=config.feature_group_version,
             primary_key=['ticker', 'date'],
             event_time='date'
         )
+        self.fg_delta = self.fs.get_or_create_feature_group(
+            name=config.feature_group_delta,
+            version=config.feature_group_version,
+            primary_key=['ticker'],
+            event_time='date'
+        )
+        self.fg_returns = self.fs.get_or_create_feature_group(
+            name=config.feature_group_returns,
+            version=config.feature_group_version,
+            primary_key=['key'],
+            event_time='date'
+        )
 
-        # Apply filters
-        if filters:        
-            for filter_dict in filters:
-                for key, value in filter_dict.items():
-                    fg = fg.filter(Feature(key) == value)
+        #Delta mappers
+        try:
+            self.delta_df = self.fg_delta.read()
+            self.delta_dict = dict(
+            zip(
+                self.delta_df['ticker'], 
+                self.delta_df['date']
+            )
+        )
+        except:
+            self.delta_df = pd.DataFrame()
+            self.delta_dict = {}
+        
 
+    
+    def fetch_4f_transactions(self) -> pd.DataFrame:
+        data=self.fg_form4.read(
+            read_options={"use_hive": True}
+        )
+        return data.to_dict('records')
+        
+    
+    def fetch_price_data(self, tickers:list[str]) -> pd.DataFrame:
+        
+        # Fetch price data for the given tickers
+        try:
+            fg_prices = self.fg_prices.filter(
+                self.fg_prices['ticker'].isin(tickers)
+            )
+        except Exception as e:
+
+            logger.error(f"Failed to fetch price data:{e}. Tickers: {tickers}")
+            return pd.DataFrame()
+        
         # Read and return data
-        data: pd.DataFrame = fg.read(read_options={"use_hive": True})
+        data=fg_prices.read(
+            read_options={"use_hive": True}
+        )
  
-
         return data
         
 
-    def push_data(
-        self,
-        data: pd.DataFrame,
-        fg_name:str,
-        fg_version:int,
-  
-    ) -> None:
+    def push_returns_data(self,data: pd.DataFrame):
         
-        fg = self.fs.get_or_create_feature_group(
-            name=fg_name,
-            version=fg_version,
-            primary_key=['key'],
-            event_time='date',
-            online_enabled=False,
-            description='Feature group containing returns data for insider transactions given specific filters'
-        )
-
-
         if not data.empty: 
-            
-            logger.debug(data.head())
-            fg.insert(
+            self.fg_returns.insert(
                 data, write_options = {
                     'start_offline_materialization':True,
                     'mode':'append' 
                 }
             )
 
-            logger.debug(f"Data pushed to feature store")
-            time.sleep(30)
+
+    def fetch_delta_table(self, ticker: str) -> int:
+        
+        try:
+            #Fetch existing records 
+            offset = self.delta_dict[ticker]
+            logger.debug(f"Offset for {ticker}: {offset}")
+
+        except:
+            offset = 0
+
+        return offset
+
+
+    def update_delta_table_batch(self, batch:dict) -> None:
+
+        #Fetch existing records as 
+        try:
+            delta_table = self.fg_delta.read(
+                read_options={"use_hive": True}
+            )
+            #Convert to dictionary
+            delta_table = dict(
+                zip(
+                    delta_table['ticker'], 
+                    delta_table['date']
+                )
+            )
+
+        #In case it is first time processing the ticker
+        except:
+            delta_table = {}
+
+
+        #Update the delta table with latest offsets priority (inplace)
+        delta_table.update(batch)
+        df = pd.DataFrame.from_dict(delta_table, orient='index').reset_index()
+        df.columns = ['ticker', 'date']
+        
+        self.fg_delta.insert(
+            df, write_options = {
+                'start_offline_materialization':True,
+                'mode':'overwrite' 
+            }
+        )
+        time.sleep(20)
 
 
 #Auxiliary function
@@ -124,8 +157,6 @@ def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:
     
     # Drop rows with NaN values (optional)
     data.dropna(inplace=True)
-
-    logger.debug(f"Data cleaned with shape: {data.shape}")
 
     return data
 

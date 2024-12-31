@@ -19,8 +19,8 @@ class Config(BaseSettings):
     npartitions: int = Field(1, json_schema_extra={'env': 'NPARTITIONS'})
     delta_period: int = Field(30, json_schema_extra={'env': 'DELTA_PERIOD'})
     feature_group_returns: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_RETURNS'})
-
-    
+    feature_group_delta: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_DELTA'})
+    delta_buffer_size: int = Field(10, json_schema_extra={'env': 'DELTA_BUFFER_SIZE'})
 
     class Config:
         env_file = ".env"

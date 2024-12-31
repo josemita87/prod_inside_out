@@ -1,6 +1,5 @@
 import yfinance as yf
 import pandas as pd
-from typing import Tuple
 from datetime import datetime
 from loguru import logger
 from src.config import config
@@ -8,11 +7,7 @@ from src.feature_store import Connection, reduce_mem_storage
 import time
 
 # Initialize connection to Hopsworks
-feature_store = Connection(
-    project_name=config.project_name,
-    api_key=config.api_key,
-)
-
+feature_store = Connection()
 
 # Fetch the latest data from Yahoo Finance
 def fetch_data_from_yahoo(prices: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
@@ -76,38 +71,27 @@ def fetch_data_from_yahoo(prices: pd.DataFrame, tickers: list[str]) -> pd.DataFr
 if __name__ == '__main__':
     
     #Fetch the tickers from the feature store and convert them from an array to a list
-    tickers = feature_store.fetch_ticker_data(
-         feature_group_name=config.feature_group_form4,
-         feature_group_version=config.feature_group_version,
-    ).tolist()
-    
+    tickers = feature_store.fetch_ticker_data().tolist()
+
     #Process data in ticker batches
     for i in range(0, len(tickers), config.buffer_size):
 
-        logger.debug(f"Processing tickers {tickers}...")
+        logger.debug(f"Processing tickers {tickers[i:i+config.buffer_size]}...")
         processing_tickers = tickers[i:i+config.buffer_size]
 
         #Extract the current data from the feature store for processing tickers
         current_data = feature_store.fetch_price_data(
-
             processing_tickers=processing_tickers,
-            feature_group_name=config.feature_group_prices,
-            feature_group_version=config.feature_group_version,
             feature_view_name=config.feature_view_name,
             feature_view_version=config.feature_view_version,
             inference_blueprint=config.inference_blueprint
         )
-        logger.debug(current_data)
-
+        
         #Fetch the latest data from Yahoo Finance for the given processing tickers
         new_data = fetch_data_from_yahoo(current_data, processing_tickers)
         logger.debug(new_data)
 
         #Push the new data to the feature store (append mode)
-        feature_store.push_data(
-            new_data, 
-            config.feature_group_prices, 
-            config.feature_group_version
-        )
+        feature_store.push_data(new_data)
 
     logger.debug('Finished processing all tickers')
