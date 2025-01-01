@@ -4,81 +4,98 @@ from loguru import logger
 import time
 from hsfs.feature import Feature
 import numpy as np
+from config import config
 
 class Connection:  
-    def __init__(
-            self, 
-            project_name, 
-            api_key
-        )-> None:
+    def __init__(self)-> None:
 
         #Initialize connection to Hopsworks
-        self.project_name = project_name
-        self.api_key = api_key
         self.project = hopsworks.login(
-            project=self.project_name,
-            api_key_value=self.api_key,
+            project=config.project_name,
+            api_key_value=config.api_key,
         )
         self.fs = self.project.get_feature_store()
     
-    
-    def fetch_4f_transactions(
-        self,
-        feature_group_name: hopsworks,
-        feature_group_version: int,
-        filters: list[dict] = None
-        ) -> pd.DataFrame:
-        
-        fg = self.fs.get_or_create_feature_group(
-            name=feature_group_name,
-            version=feature_group_version,
-            primary_key='key',
+        # Initialize feature group connections
+        self.fg_f4_target = self.fs.get_or_create_feature_group(
+            name=config.feature_group_target,
+            version=config.feature_group_version,
+            primary_key=['key'],
             event_time='date'
         )
-       
-        # Apply filters
-        if filters:        
-            for filter_dict in filters:
-                for key, value in filter_dict.items():
-                    fg = fg.filter(Feature(key) == value)
-
-        # Read and return data from the feature store
-        data: pd.DataFrame = fg.read(read_options={"use_hive": True})
-        return data.to_dict('records')
-        
-    
-    def push_data(
-        self,
-        data: pd.DataFrame,
-        fg_name:str,
-        fg_version:int,
-  
-    ) -> None:
-        
-        fg = self.fs.get_or_create_feature_group(
-            name=fg_name,
-            version=fg_version,
+        self.fg_f4_avg = self.fs.get_feature_group(
+            name=config.feature_group_avg,
+            version=config.feature_group_version,
             primary_key=['key'],
-            event_time='date',
-            online_enabled=False,
-            start_offline_materialization=True,
-            description='Feature group containing returns data for insider transactions given specific filters'
+            event_time='date'
+        )
+        self.fg_offset_avg = self.fs.get_or_create_feature_group(
+            name=config.feature_group_offset_avg,
+            version=config.feature_group_version,
+            primary_key=['ticker'],
+            event_time='date'
         )
 
+        #Delta mappers
+        try:
+            self.offset_df = self.fg_offset_avg.read()
+            self.offset_dict = dict(
+            zip(
+                self.offset_df['ticker'], 
+                self.offset_dict['date']
+                )
+            )
+        except:
+            self.offset_df = pd.DataFrame()
+            self.offset_dict = {}
 
+
+    
+    def fetch_4f_transactions(self) -> pd.DataFrame:
+        # Read and return data from the feature store
+        return self.fg_f4_target.read(read_options={"use_hive": True})
+        
+        
+    
+    def push_data(self, data: pd.DataFrame) -> None:
+        
         if not data.empty: 
-            
-            logger.debug(data.head())
-            fg.insert(
+            self.fg_f4_avg.insert(
                 data, write_options = {
                     'start_offline_materialization':True,
                     'mode':'append' 
                 }
             )
 
-            logger.debug(f"Data pushed to feature store")
-            time.sleep(30)
 
+    def fetch_offset(self, ticker: str) -> int:
+        
+        try:
+            #Fetch existing records 
+            offset = self.offset_dict[ticker]
+            logger.debug(f"Offset for {ticker}: {offset}")
+
+        except:
+            offset = 0
+
+        offset = pd.to_datetime(offset, unit='ms', utc=True)
+        return offset
+
+
+    def update_delta_table_batch(self, batch:dict) -> None:
+
+        #Update the delta table with latest offsets priority (inplace)
+        self.offset_dict.update(batch)
+        df = pd.DataFrame.from_dict(self.offset_dict, orient='index').reset_index()
+        df.columns = ['ticker', 'date']
+        
+        self.fg_offset_avg.insert(
+            df, write_options = {
+                'start_offline_materialization':True,
+                'mode':'overwrite' 
+            }
+        )
+        time.sleep(20)
 
 #Auxiliary function
 def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:

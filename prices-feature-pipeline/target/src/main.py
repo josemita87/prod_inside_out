@@ -8,8 +8,6 @@ import time
 from loguru import logger
 
 
-
-
 def handle_delta_buffer(
         txs: pd.DataFrame, 
         current_time: int, 
@@ -18,7 +16,7 @@ def handle_delta_buffer(
     )-> tuple[dict, int]:
     """Handle the delta buffer and update the delta table"""
 
-    timestamp = int(txs['date'].max().timestamp())
+    timestamp = txs['date'].max()
     ticker = txs['ticker'].iloc[0]
 
     if timestamp > current_time:
@@ -28,8 +26,9 @@ def handle_delta_buffer(
 
     delta_counter +=1
     logger.debug(f'Delta Counter : {delta_counter}')
+
     # Update offsets
-    if delta_counter > config.delta_buffer_size:
+    if delta_counter > config.offset_buffer_size:
         feature_store.update_delta_table_batch(delta_buffer)
         delta_counter = 0
         delta_buffer = {}
@@ -40,16 +39,16 @@ def handle_delta_buffer(
 if __name__ == "__main__":
         
     # Get the current time in milliseconds
-    time_ms = int(time.time() * 1000)
+    time_ms = pd.to_datetime(int(time.time() * 1000), unit='ms', utc=True)
 
     # Initialize connection to Hopsworks
     feature_store = Connection()
 
     # Get each transaction in the feature store
-    txs: list[dict] = feature_store.fetch_4f_transactions()
-
+    txs: pd.DataFrame = feature_store.fetch_4f_transactions()
+    
     # Get the unique tickers to process
-    tickers_to_process = sorted(list(set(tx['ticker'] for tx in txs)))
+    tickers_to_process:list = sorted(txs['ticker'].unique())
    
     # Get historical prices and convert to a Dask DataFrame
     ddprices: dd.DataFrame = dd.from_pandas(
@@ -58,8 +57,8 @@ if __name__ == "__main__":
     )
 
     #Initialize buffers
-    delta_buffer:dict = {}
-    delta_counter:int = 0
+    offset_buffer:dict = {}
+    offset_counter:int = 0
 
     #Initialize mapper  
     pct_change_mapper = returns_module.Mapper(ddprices)
@@ -67,21 +66,17 @@ if __name__ == "__main__":
     # Process transactions by ticker
     for ticker in tickers_to_process:
 
-        if ticker == 'DUM':
-            continue
+        # Get the offset (datetime) for the ticker
+        offset = feature_store.fetch_offset(ticker)
         
-        # Get the offset for the ticker
-        offset:int = feature_store.fetch_delta_table(ticker)
-
         # Filter transactions to process
-        txs_to_process = [
-            tx for tx in txs if \
-            (tx['ticker']==ticker) & 
-            (tx['date'].timestamp() > offset)  &
-            ((tx['date']+timedelta(days=config.delta_period)).timestamp()<time_ms)         
+        txs_to_process = txs[
+            (txs['ticker'] == ticker)
+            &(txs['date'] > offset)
+            &(txs['date'] < time_ms)
         ]
-        
-        if txs_to_process == []:
+
+        if txs_to_process.empty:
             continue
 
         # Work on the ticker's unprocessed transactions and compute returns
@@ -92,11 +87,11 @@ if __name__ == "__main__":
         )
 
         # Add ticker to the delta buffer and handle it
-        delta_buffer, delta_counter = handle_delta_buffer(
+        offset_buffer, offset_counter = handle_delta_buffer(
             updated_txs, 
             time_ms,
-            delta_buffer,
-            delta_counter
+            offset_buffer,
+            offset_counter
         )
 
         # Clean data & reduce memory space

@@ -5,6 +5,7 @@ from loguru import logger
 class Mapper:
     def __init__(self, prices: pd.DataFrame):
         self.prices = prices  
+       
       
     def compute_returns(self, tx: dict, ticker:str, period: pd.Timedelta) -> dict:
 
@@ -39,14 +40,14 @@ class Mapper:
 
         return tx
 
-    def process_ticker(self, ticker: str, transactions: list[dict], period: int) -> pd.DataFrame:
+    def process_ticker(self, ticker: str, transactions: pd.DataFrame, period: int) -> pd.DataFrame:
         """
         Processes all transactions for a given ticker.
         After processing all transactions for a ticker, it removes the processed ticker's data from `self.prices`.
         """
         # Process all transactions for this ticker
         processed_transactions = []
-        for tx in transactions:
+        for tx in transactions.to_dict(orient='records'):
             processed_tx = self.compute_returns(tx, ticker, period)
             processed_transactions.append(processed_tx)
 

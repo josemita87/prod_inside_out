@@ -18,7 +18,7 @@ class Connection:
 
         # Initialize feature group connections
         self.fg_form4 = self.fs.get_or_create_feature_group(
-            name=config.feature_group_form4,
+            name=config.feature_group_form4_basic,
             version=config.feature_group_version,
             primary_key='key',
             event_time='date'
@@ -30,13 +30,13 @@ class Connection:
             event_time='date'
         )
         self.fg_delta = self.fs.get_or_create_feature_group(
-            name=config.feature_group_delta,
+            name=config.feature_group_offset_target,
             version=config.feature_group_version,
             primary_key=['ticker'],
             event_time='date'
         )
         self.fg_returns = self.fs.get_or_create_feature_group(
-            name=config.feature_group_returns,
+            name=config.feature_group_target,
             version=config.feature_group_version,
             primary_key=['key'],
             event_time='date'
@@ -58,10 +58,8 @@ class Connection:
 
     
     def fetch_4f_transactions(self) -> pd.DataFrame:
-        data=self.fg_form4.read(
-            read_options={"use_hive": True}
-        )
-        return data.to_dict('records')
+        txs = self.fg_form4.read(read_options={"use_hive": True})
+        return txs
         
     
     def fetch_price_data(self, tickers:list[str]) -> pd.DataFrame:
@@ -80,7 +78,7 @@ class Connection:
         data=fg_prices.read(
             read_options={"use_hive": True}
         )
- 
+
         return data
         
 
@@ -95,7 +93,7 @@ class Connection:
             )
 
 
-    def fetch_delta_table(self, ticker: str) -> int:
+    def fetch_offset(self, ticker: str) -> int:
         
         try:
             #Fetch existing records 
@@ -105,6 +103,10 @@ class Connection:
         except:
             offset = 0
 
+        #Convert to datetime in ms
+        offset = pd.to_datetime(offset, unit='ms', utc=True) 
+     
+    
         return offset
 
 

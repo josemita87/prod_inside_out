@@ -8,17 +8,20 @@ load_dotenv(".env")
 load_dotenv(".credentials.env")
 
 class Config(BaseSettings):
-    project_name: str = Field(..., json_schema_extra={'env': 'PROJECT_NAME'})
-    feature_group_form_4_target: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_RETURNS'})
-    feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
-    event_time: str = Field(..., json_schema_extra={'env': 'EVENT_TIME'})
-    api_key: str = Field(..., json_schema_extra={'env': 'API_KEY'})
-    
-    fourf_filters: list[dict] = Field([{'acquired_disposed': 'D'}])
-    
-    delta_period: int = Field(30, json_schema_extra={'env': 'DELTA_PERIOD'})
-    feature_group_push: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_PUSH'})
 
+    project_name: str = Field(..., json_schema_extra={'env': 'PROJECT_NAME'})
+    api_key: str = Field(..., json_schema_extra={'env': 'API_KEY'})
+
+    # Feature group names
+    feature_group_target: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_TARGET'})
+    feature_group_avg: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_AVG'})
+    feature_group_offset_avg: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_OFFSET_AVG'})
+    feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
+
+    #Other parameters
+    delta_period: int = Field(..., json_schema_extra={'env': 'DELTA_PERIOD'})
+    event_time: str = Field(..., json_schema_extra={'env': 'EVENT_TIME'})
+    offset_buffer_size: int = Field(..., json_schema_extra={'env': 'OFFSET_BUFFER_SIZE'})
     
 
     class Config:
