@@ -7,7 +7,7 @@ class Mapper:
     def __init__(self):
          pass
       
-    def process_ticker(self, ticker: str, transactions: pd.DataFrame, period: timedelta) -> pd.DataFrame:
+    def process_ticker(self, transactions: pd.DataFrame, period: timedelta) -> pd.DataFrame:
         """
         Processes all transactions for a given ticker, and calculates the average return 
         for each of them, considering transactions for which target has been already computed.

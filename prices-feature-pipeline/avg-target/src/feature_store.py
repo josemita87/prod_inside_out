@@ -16,6 +16,10 @@ class Connection:
         )
         self.fs = self.project.get_feature_store()
     
+        # Materialization counters
+        self.materialization_counter_offset = 0
+        self.materialization_counter_avg = 0
+
         # Initialize feature group connections
         self.fg_f4_target = self.fs.get_or_create_feature_group(
             name=config.feature_group_target,
@@ -23,7 +27,7 @@ class Connection:
             primary_key=['key'],
             event_time='date'
         )
-        self.fg_f4_avg = self.fs.get_feature_group(
+        self.fg_f4_avg = self.fs.get_or_create_feature_group(
             name=config.feature_group_avg,
             version=config.feature_group_version,
             primary_key=['key'],
@@ -49,23 +53,28 @@ class Connection:
             self.offset_df = pd.DataFrame()
             self.offset_dict = {}
 
-
     
     def fetch_4f_transactions(self) -> pd.DataFrame:
         # Read and return data from the feature store
         return self.fg_f4_target.read(read_options={"use_hive": True})
         
-        
     
     def push_data(self, data: pd.DataFrame) -> None:
         
         if not data.empty: 
-            self.fg_f4_avg.insert(
-                data, write_options = {
-                    'start_offline_materialization':True,
-                    'mode':'append' 
-                }
-            )
+            try:
+                self.avg_job, _ = self.fg_f4_avg.insert(
+                    data, write_options = {
+                        'start_offline_materialization':False,
+                        'mode':'append' 
+                    }
+                )
+            except Exception as e:
+                self.avg_job=None
+
+            if self.avg_job and self.materialization_counter_avg >= config.materialization_batch_size:
+                self.avg_job.run()
+                self.materialization_counter_avg = 0
 
 
     def fetch_offset(self, ticker: str) -> int:
@@ -88,14 +97,23 @@ class Connection:
         self.offset_dict.update(batch)
         df = pd.DataFrame.from_dict(self.offset_dict, orient='index').reset_index()
         df.columns = ['ticker', 'date']
-        
-        self.fg_offset_avg.insert(
-            df, write_options = {
-                'start_offline_materialization':True,
-                'mode':'overwrite' 
-            }
-        )
-        time.sleep(20)
+        try:
+            self.offset_job, _ = self.fg_offset_avg.insert(
+                df, write_options = {
+                    'start_offline_materialization':False,
+                    'mode':'overwrite' 
+                }
+            )
+        except:
+            self.offset_job=None
+            
+        if self.offset_job and self.materialization_counter_offset >= config.materialization_batch_size:
+            self.offset_job.run()
+            self.materialization_counter_offset = 0
+
+    def last_materialization_jobs(self):
+        self.avg_job.run()
+        self.offset_job.run()
 
 #Auxiliary function
 def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:
@@ -145,7 +163,7 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
         'market_cap': 'int64',
         'timestamp': 'int64',
         'pct_change': 'float32',
-        'avg_change': 'float32'
+        'avg_return': 'float32'
     }
     
     for col, dtype in numeric_columns.items():

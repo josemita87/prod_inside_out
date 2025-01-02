@@ -1,6 +1,6 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from pydantic.class_validators import root_validator
+
 
 from dotenv import load_dotenv  
 
@@ -22,8 +22,8 @@ class Config(BaseSettings):
     delta_period: int = Field(..., json_schema_extra={'env': 'DELTA_PERIOD'})
     event_time: str = Field(..., json_schema_extra={'env': 'EVENT_TIME'})
     offset_buffer_size: int = Field(..., json_schema_extra={'env': 'OFFSET_BUFFER_SIZE'})
-    
-
+    materialization_batch_size: int = Field(..., json_schema_extra={'env': 'MATERIALIZATION_BATCH_SIZE'})
+    npartitions: int = Field(..., json_schema_extra={'env': 'NPARTITIONS'})
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

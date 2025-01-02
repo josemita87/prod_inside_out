@@ -1,7 +1,6 @@
 from src.feature_store import Connection, validate_and_reduce_mem_storage, data_cleaning
 from src.config import config
 import pandas as pd
-import dask.dataframe as dd
 from src import returns_module
 from datetime import timedelta
 from loguru import logger
@@ -49,18 +48,12 @@ if __name__ == "__main__":
     # Get the unique tickers to process
     tickers_to_process:list = sorted(txs['ticker'].unique())
    
-    # Get historical prices and convert to a Dask DataFrame
-    ddprices: dd.DataFrame = dd.from_pandas(
-        feature_store.fetch_price_data(tickers_to_process), 
-        npartitions=config.npartitions
-    )
-
     #Initialize buffers
     offset_buffer:dict = {}
     offset_counter:int = 0
 
     #Initialize mapper  
-    avg_change_mapper = returns_module.Mapper(ddprices)
+    avg_change_mapper = returns_module.Mapper()
 
     # Process transactions by ticker
     for ticker in tickers_to_process:
@@ -71,14 +64,13 @@ if __name__ == "__main__":
         # Filter transactions to process
         txs_to_process = txs[
             (txs['ticker'] == ticker)
-            &(int(txs['date'].to_timestamp()) > offset)
+            &(txs['date'] > offset)
         ]
-        if txs_to_process.empty():
+        if txs_to_process.empty:
             continue
 
         # Work on the ticker's unprocessed transactions and compute returns
         updated_txs:pd.DataFrame = avg_change_mapper.process_ticker(
-            ticker,
             txs_to_process, 
             timedelta(days=config.delta_period)
         )
@@ -90,7 +82,7 @@ if __name__ == "__main__":
             offset_buffer,
             offset_counter
         )
-
+   
         # Clean data & reduce memory space
         updated_txs = validate_and_reduce_mem_storage(
             data_cleaning(updated_txs)
@@ -103,7 +95,5 @@ if __name__ == "__main__":
         if not updated_txs.empty:
             feature_store.push_returns_data(updated_txs)
     
-
-    #TODO 
-
-    # Change the logic of extracting and updating prices feature group to only update those of the transactions being processed!
+    # Finish remaining materializations
+    feature_store.last_materialization_jobs()

@@ -5,19 +5,31 @@ from typing import Tuple, Any
 from loguru import logger
 import time
 from datetime import datetime
+from config import config
 
+#refactor config parameters
+#add buffer for offline materialization
 
 class Connection:  
 
-    def __init__(self, project_name, api_key):
+    def __init__(self):
         
         # Initialize Feature Store Object
         project = hopsworks.login(
-            project=project_name,
-            api_key_value=api_key,
+            project=config.project_name,
+            api_key_value=config.api_key,
         )
         self.fs = project.get_feature_store()
     
+        # Initialize feature group connections
+        self.fg_form4 = self.fs.get_or_create_feature_group(
+            name=config.feature_group_form_4_basic,
+            version=config.feature_group_version,
+            primary_key=['key'],
+            event_time='date'
+        )
+
+        self.materialization_counter = 0
     
     def _validate_dataframe_types(self, data: pd.DataFrame, expected_schema: dict) -> pd.DataFrame:
         """
@@ -27,39 +39,29 @@ class Connection:
         return data
 
 
-    def push_data(
-            self,
-            data: pd.DataFrame,
-            feature_group_name: str,
-            feature_group_version: int,
-            schema: dict
-        ) -> None:
+    def push_data(self, data: pd.DataFrame, schema: dict) -> None:
 
-
-        fg = self.fs.get_or_create_feature_group(
-            name=feature_group_name,
-            version=feature_group_version,
-            primary_key=['key'],
-            event_time='date'
-        )
-
-        
+        # Increment the materialization counter
+        self.materialization_counter += 1
         # Validate and coerce the DataFrame
         data = self._validate_dataframe_types(data, schema)
-        
+       
         # Insert the data into the feature group
         try:
-            fg.insert(data)
+            self.job, _ = self.fg_form4.insert(data, write_options = {'start_offline_materialization': False})
             logger.debug(f"Data pushed to feature store successfully.")
 
         except Exception as e:
             logger.error(f"Failed to push data to feature store: {e}")
             logger.debug(f"Data: {data}")
-            
-        
+            self.job=None
 
+        if self.job and self.materialization_counter >= config.materialization_batch_size:
+            self.job.run()
+            self.materialization_counter = 0
 
-
+    def last_materialization(self):
+        self.job.run()
 def data_cleaning(data: list[dict]) -> pd.DataFrame:
     """
     Clean the data by replacing 'None' and '---' with NaN, 

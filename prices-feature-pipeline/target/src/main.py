@@ -106,7 +106,6 @@ if __name__ == "__main__":
         if not updated_txs.empty:
             feature_store.push_returns_data(updated_txs)
     
+    # Apply last materialization jobs
+    feature_store.last_materialization_jobs()
 
-    #TODO 
-
-    # Change the logic of extracting and updating prices feature group to only update those of the transactions being processed!

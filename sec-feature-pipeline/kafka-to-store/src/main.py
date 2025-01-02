@@ -16,10 +16,7 @@ topic = kafka_topic.Connection(
 )
 
 # Connect to the feature store
-feature_store = Connection(
-    project_name=config.project_name,
-    api_key=config.api_key,
-)
+feature_store = Connection()
 
 
 if __name__ == "__main__":
@@ -31,7 +28,7 @@ if __name__ == "__main__":
     logger.info('Kafka to Feature Store Microservice Started')
     logger.info(f'Connected to Kafka broker at {config.kafka_broker_address}')
     logger.info(f'Input topic: {config.kafka_input_topic}')
-    logger.info(f'ENV VARIABLES:\n ->Buffer Size: {config.buffer_size}\n ->Feature Group Name: {config.feature_group_name}\n ->Feature Group Version: {config.feature_group_version}')
+    logger.info(f'ENV VARIABLES:\n ->Buffer Size: {config.buffer_size}\n ->Feature Group Name: {config.feature_group_form_4_basic}\n ->Feature Group Version: {config.feature_group_version}')
     
     while not is_finished:
         
@@ -46,10 +43,11 @@ if __name__ == "__main__":
             
             feature_store.push_data(
                 data, 
-                feature_group_name=config.feature_group_name,
-                feature_group_version=config.feature_group_version, 
                 schema = config.expected_schema
             )
         else:
             logger.info('No more messages to consume. Exiting kafka-to-store...')
             break
+
+    # Run the last materialization
+    feature_store.last_materialization()

@@ -1,6 +1,6 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from pydantic.class_validators import root_validator
+
 
 from dotenv import load_dotenv  
 
@@ -18,6 +18,8 @@ class Config(BaseSettings):
     feature_group_target: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_TARGET'})
     feature_group_offset_target: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_OFFSET_TARGET'})
     feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
+    feature_group_storage: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_STORAGE'})
+    materialization_batch_size: int = Field(..., json_schema_extra={'env': 'MATERIALIZATION_BATCH_SIZE'})
 
     #Other parameters
     event_time: str = Field(..., json_schema_extra={'env': 'EVENT_TIME'})

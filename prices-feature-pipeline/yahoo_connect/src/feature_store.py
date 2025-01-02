@@ -26,7 +26,10 @@ class Connection:
             primary_key=['date', 'ticker'],
             event_time='date'
         )
-    
+
+        self.materialization_counter = 0
+        self.job = None
+
     def fetch_ticker_data(self) -> pd.DataFrame:
     
         data: pd.DataFrame = self.fg_txs.read()
@@ -66,16 +69,20 @@ class Connection:
     def push_data(self, data: pd.DataFrame) -> None:
         
         if not data.empty: 
-            self.fg_prices.insert(
+            self.job, _ = self.fg_prices.insert(
                 data, write_options = {
-                    'start_offline_materialization':True,
+                    'start_offline_materialization':False,
                     'mode':'append' 
                 }
             )
+        
+            if self.job and self.materialization_counter >= config.materialization_batch_size:
+                self.job.run()
+                self.materialization_counter = 0
 
-            logger.debug('Ingesting data...')
-
-
+    def last_materialization_jobs(self):
+        self.job.run()
+        
 # Auxiliary function
 def reduce_mem_storage(df:pd.DataFrame) -> pd.DataFrame:
     """Reduces the memory usage of the given DataFrame"""

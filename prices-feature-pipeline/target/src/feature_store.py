@@ -16,32 +16,44 @@ class Connection:
         )
         self.fs = self.project.get_feature_store()
 
+        # Materialization counters 
+        self.materialization_counter_offset = 0
+        self.materialization_counter_returns = 0
+
         # Initialize feature group connections
         self.fg_form4 = self.fs.get_or_create_feature_group(
             name=config.feature_group_form4_basic,
+            online_enabled=False,
+            stream=False,   
             version=config.feature_group_version,
-            primary_key='key',
+            primary_key=['key'],
             event_time='date'
         )
         self.fg_prices = self.fs.get_or_create_feature_group(
             name=config.feature_group_prices,
+            online_enabled=False,
+            stream=False,
             version=config.feature_group_version,
             primary_key=['ticker', 'date'],
             event_time='date'
         )
         self.fg_delta = self.fs.get_or_create_feature_group(
             name=config.feature_group_offset_target,
+            online_enabled=False,
+            stream=False,
             version=config.feature_group_version,
             primary_key=['ticker'],
             event_time='date'
         )
         self.fg_returns = self.fs.get_or_create_feature_group(
             name=config.feature_group_target,
+            online_enabled=False,
+            stream=False,
             version=config.feature_group_version,
             primary_key=['key'],
             event_time='date'
         )
-
+    
         #Delta mappers
         try:
             self.delta_df = self.fg_delta.read()
@@ -71,7 +83,8 @@ class Connection:
             )
         except Exception as e:
 
-            logger.error(f"Failed to fetch price data:{e}. Tickers: {tickers}")
+            logger.error(f"Failed to fetch price \
+                         data:{e}. Tickers: {tickers}")
             return pd.DataFrame()
         
         # Read and return data
@@ -85,13 +98,19 @@ class Connection:
     def push_returns_data(self,data: pd.DataFrame):
         
         if not data.empty: 
-            self.fg_returns.insert(
-                data, write_options = {
-                    'start_offline_materialization':True,
+            self.returns_job = self.fg_returns.insert(
+                features = data, 
+                write_options = {
+                    'start_offline_materialization':False,
                     'mode':'append' 
                 }
             )
 
+            if self.returns_job and \
+                self.materialization_counter_returns >= \
+                    config.materialization_batch_size:
+                self.returns_job.run()
+                self.materialization_returns = 0
 
     def fetch_offset(self, ticker: str) -> int:
         
@@ -129,20 +148,29 @@ class Connection:
         except:
             delta_table = {}
 
-
         #Update the delta table with latest offsets priority (inplace)
         delta_table.update(batch)
         df = pd.DataFrame.from_dict(delta_table, orient='index').reset_index()
         df.columns = ['ticker', 'date']
         
-        self.fg_delta.insert(
-            df, write_options = {
-                'start_offline_materialization':True,
+        self.offset_job = self.fg_delta.insert(
+            features = df, 
+            storage = config.feature_group_storage,
+            write_options = {
+                'start_offline_materialization':False,
                 'mode':'overwrite' 
             }
         )
-        time.sleep(20)
+        if self.offset_job and \
+            self.materialization_counter_offset >= \
+                config.materialization_batch_size:
+            self.offset_job.run()
+            self.materialization_counter_offset = 0
 
+    def last_materialization(self):
+        self.offset_job.run()
+        self.returns_job.run()
+        
 
 #Auxiliary function
 def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:
