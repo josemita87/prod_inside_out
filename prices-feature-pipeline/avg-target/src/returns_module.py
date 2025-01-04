@@ -18,7 +18,6 @@ class Mapper:
         
         updated_transactions = []
         for tx in transactions.to_dict(orient='records'):
-            
             # Get returns belonging to the past.
             date_limit = tx['date'] - period
             data_until_tx = transactions[transactions['date'] < date_limit]

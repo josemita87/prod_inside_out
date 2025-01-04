@@ -155,7 +155,6 @@ class Connection:
         
         self.offset_job = self.fg_delta.insert(
             features = df, 
-            storage = config.feature_group_storage,
             write_options = {
                 'start_offline_materialization':False,
                 'mode':'overwrite' 

@@ -16,14 +16,14 @@ class Config(BaseSettings):
     consumer_group: str = Field(..., env='CONSUMER_GROUP')
     auto_offset_reset: str = Field(..., env='AUTO_OFFSET_RESET')
     delay:int = Field(0, env='DELAY')  # Default delay is 0
-    processing_guarantee: str = Field(..., env='PROCESSING_GUARANTEE')
-
+    
     # Hopsworks settings
     project_name: str = Field(..., env='PROJECT_NAME')
     api_key: str = Field(..., env='API_KEY')
     feature_group_form_4_basic: str = Field(..., env='FEATURE_GROUP_FORM_4_BASIC')
     feature_group_version: int = Field(1, env='FEATURE_GROUP_VERSION')  # Default version is 1
     materialization_batch_size: int = Field(1000, env='MATERIALIZATION_BATCH_SIZE')  # Default batch size is 1000
+    
     # Expected schema as a class-level constant
     expected_schema: ClassVar[Dict[str, type]] = {
         "key": str,
@@ -49,30 +49,9 @@ class Config(BaseSettings):
         "sic": str,
     }
     
-    # Inference blueprint
-    inference_blueprint: dict = Field({
-        "key": "000000000",  # Dummy key
-        "company_cik": "0000000000",  # Dummy CIK
-        "ticker": "DUM",
-        "insider_cik": "0000000001",  # Dummy insider CIK
-        "insider_name": "DOE JOHN",
-        "owner_code": "9999",
-        "rule105b1": "False",
-        "derivative": "False",
-        "link": "https://www.example.com/test-dummy-data",
-        "shares": "1",
-        "acquired_disposed": "D",
-        "price": "1.01",
-        "date": datetime.strptime("2000-01-01",'%Y-%m-%d'),  # Use a fictional date
-        "remaining_shares": "1",
-        "ownership": "D",
-        "coding": "T",
-        "direct_holding": "1",
-        "indirect_holding": "0",
-        "market_cap": "1.0",
-        "exchange": "DUMMY",
-        "sic": "0000"
-    })
+
+    #Training settings
+    api_drop: str = Field(..., env='API_DROP')
 
     class Config:
         env_file = ".env"  # Specify the .env file for local development

@@ -1,10 +1,7 @@
-
 import hopsworks
 import pandas as pd
 from typing import Tuple, Any
 from loguru import logger
-import time
-from datetime import datetime
 from config import config
 
 #refactor config parameters
@@ -29,6 +26,8 @@ class Connection:
             event_time='date'
         )
 
+        # Initialize the job and materialization counter
+        self.job = None
         self.materialization_counter = 0
     
     def _validate_dataframe_types(self, data: pd.DataFrame, expected_schema: dict) -> pd.DataFrame:
@@ -37,7 +36,6 @@ class Connection:
         """
         # In next weeks , will develop type validation and coercion in this method
         return data
-
 
     def push_data(self, data: pd.DataFrame, schema: dict) -> None:
 
@@ -48,7 +46,10 @@ class Connection:
        
         # Insert the data into the feature group
         try:
-            self.job, _ = self.fg_form4.insert(data, write_options = {'start_offline_materialization': False})
+            self.job, _ = self.fg_form4.insert(
+                data, 
+                write_options = {'start_offline_materialization': False}
+            )
             logger.debug(f"Data pushed to feature store successfully.")
 
         except Exception as e:
@@ -61,13 +62,19 @@ class Connection:
             self.materialization_counter = 0
 
     def last_materialization(self):
-        self.job.run()
+        if self.job:
+            self.job.run()
+
+
 def data_cleaning(data: list[dict]) -> pd.DataFrame:
     """
     Clean the data by replacing 'None' and '---' with NaN, 
     dropping duplicates and removing rows with NaN values.
     """
 
+    #Drop specific columns from the dataframe
+    #if config.drop_api:
+        #data = data.drop([config.drop_api], axis=1)
     # Convert the list of dicts to a DataFrame
     data = pd.DataFrame(data)
 
@@ -75,7 +82,7 @@ def data_cleaning(data: list[dict]) -> pd.DataFrame:
     data = data.drop_duplicates()
 
     # Drop rows with NaN values in any column
-    data = data.dropna()
+    #data = data.dropna()
 
     return data
 
@@ -91,11 +98,13 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
     # Convert columns to categorical where appropriate
     for col in ['company_cik', 'ticker', 'insider_cik', 'insider_name', 
                 'owner_code', 'exchange', 'acquired_disposed', 'coding', 'sic']:
-        data[col] = data[col].astype('category')
+        if col in data.columns:
+            data[col] = data[col].astype('category')
 
     # Convert booleans to actual boolean dtype
     for col in ['rule105b1', 'derivative', 'equity_swap', 'ownership']:
-        data[col] = data[col].astype('bool')
+        if col in data.columns:
+            data[col] = data[col].astype('bool')
 
     # Convert numeric columns to more memory-efficient types
     numeric_columns = {
@@ -108,8 +117,9 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
         'timestamp': 'int64',
     }
     for col, dtype in numeric_columns.items():
-        data[col] = pd.to_numeric(data[col], errors='coerce').astype(dtype)
-        data = data.dropna(subset=[col])  # Drop rows where conversion failed
+        if col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors='coerce').astype(dtype)
+            data = data.dropna(subset=[col])  # Drop rows where conversion failed
 
     # Convert 'date' to datetime
     data['date'] = pd.to_datetime(data['date'], errors='coerce')

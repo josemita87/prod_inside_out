@@ -1,31 +1,23 @@
 
 from quixstreams import Application
 import json
-from typing import Dict, Generator, Tuple
-from loguru import logger
+from typing import Generator, Tuple
 import pandas as pd
 from datetime import datetime
-
+from config import config
 
 class Connection:
-    def __init__(
-        self, 
-        broker_address,
-        input_topic_name, 
-        consumer_group, 
-        auto_offset_reset, 
-        processing_guarantee):
+    def __init__(self):
         
         self.app = Application(
-            broker_address=broker_address,
-            consumer_group=consumer_group,
-            auto_offset_reset=auto_offset_reset,
-            #processing_guarantee=processing_guarantee
+            broker_address=config.kafka_broker_address,
+            consumer_group=config.consumer_group,
+            auto_offset_reset=config.auto_offset_reset,
             consumer_extra_config={'enable.auto.offset.store': True}
-            )
+        )
 
         self.input_topic = self.app.topic(
-            name=input_topic_name,
+            name=config.kafka_input_topic,
             value_deserializer='json',
             key_deserializer='string'
         )
@@ -43,8 +35,6 @@ class Connection:
                 
                 message = consumer.poll(timeout)
                 if not message:
-                    #consumer.store_offsets(message)
-                    #consumer.commit_checkpoint()
                     return True, buffer
             
                 if message:
@@ -61,9 +51,6 @@ class Connection:
                     
                 
                 if len(buffer) >= buffer_size:
-                    #Update offset for the last message consumed
-                    #consumer.store_offsets(message)
-                    #consumer.commit_checkpoint()
                     return False, buffer
                     
 

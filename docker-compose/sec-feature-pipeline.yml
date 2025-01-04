@@ -1,4 +1,4 @@
-name: f4-feature_pipeline
+name: f4-feature-pipeline
 
 networks:
   redpanda-network:
@@ -12,16 +12,15 @@ x-shared-environment: &shared-env
   AUTO_OFFSET_RESET: "earliest"
   MODE: "historical"
   PROJECT_NAME: "ml_system_c1"
-  PROCESSING_GUARANTEE: "at-least-once"
   POLL_TIMEOUT: 30
-  YEARS: 1
+  YEARS: 5
   FORM_TYPE: 4
-  TEST_TRIAL: "True"
+  TEST_TRIAL: "False"
   TEST_SIZE: 1000
-  BUFFER_SIZE: 100
-  SLEEP_TIME: 0.2
-  DELAY: 15
-  
+  BUFFER_SIZE: 500
+  SLEEP_TIME: 0.1
+  DELAY: 90
+  API_DROP: "exchange"
 
 services:
   scraper:
@@ -35,9 +34,8 @@ services:
       <<: *shared-env
     ports:
       - "8010:8010"
-    restart: always
-    #depends_on:
-      #- master-index
+    restart:
+      "on-failure:5"
 
   api-enricher:
     build:
@@ -50,10 +48,11 @@ services:
       <<: *shared-env
     ports:
       - "8009:8009"
-    restart: always
+    restart:
+      "on-failure:5"
     depends_on:
       - scraper
-      
+
   kafka-to-store:
     build:
       context: ../sec-feature-pipeline/kafka-to-store
@@ -66,6 +65,8 @@ services:
       <<: *shared-env
     ports:
       - "8008:8008"
-    restart: always
+    restart:
+      "on-failure:5"
+
     depends_on:
       - api-enricher

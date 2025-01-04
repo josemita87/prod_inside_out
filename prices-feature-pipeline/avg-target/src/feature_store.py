@@ -17,6 +17,8 @@ class Connection:
         self.fs = self.project.get_feature_store()
     
         # Materialization counters
+        self.avg_job=None
+        self.offset_job=None
         self.materialization_counter_offset = 0
         self.materialization_counter_avg = 0
 
@@ -58,24 +60,6 @@ class Connection:
         # Read and return data from the feature store
         return self.fg_f4_target.read(read_options={"use_hive": True})
         
-    
-    def push_data(self, data: pd.DataFrame) -> None:
-        
-        if not data.empty: 
-            try:
-                self.avg_job, _ = self.fg_f4_avg.insert(
-                    data, write_options = {
-                        'start_offline_materialization':False,
-                        'mode':'append' 
-                    }
-                )
-            except Exception as e:
-                self.avg_job=None
-
-            if self.avg_job and self.materialization_counter_avg >= config.materialization_batch_size:
-                self.avg_job.run()
-                self.materialization_counter_avg = 0
-
 
     def fetch_offset(self, ticker: str) -> int:
         
@@ -89,6 +73,25 @@ class Connection:
 
         offset = pd.to_datetime(offset, unit='ms', utc=True)
         return offset
+    
+
+    def push_returns_data(self, data: pd.DataFrame) -> None:
+        
+        if not data.empty: 
+            try:
+                self.avg_job, _ = self.fg_f4_avg.insert(
+                    data, 
+                    write_options = {
+                        'start_offline_materialization':False,
+                        'mode':'append' 
+                    }
+                )
+            except Exception as e:
+                self.avg_job=None
+
+            if self.avg_job and self.materialization_counter_avg >= config.materialization_batch_size:
+                self.avg_job.run()
+                self.materialization_counter_avg = 0
 
 
     def update_delta_table_batch(self, batch:dict) -> None:
@@ -106,14 +109,16 @@ class Connection:
             )
         except:
             self.offset_job=None
-            
+
         if self.offset_job and self.materialization_counter_offset >= config.materialization_batch_size:
             self.offset_job.run()
             self.materialization_counter_offset = 0
 
     def last_materialization_jobs(self):
-        self.avg_job.run()
-        self.offset_job.run()
+        if self.avg_job:
+            self.avg_job.run()
+        if self.offset_job:
+            self.offset_job.run()
 
 #Auxiliary function
 def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:
@@ -131,7 +136,7 @@ def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:
     # Drop rows with NaN values (optional)
     data.dropna(inplace=True)
 
-    logger.debug(f"Data cleaned with shape: {data.shape}")
+    
 
     return data
 

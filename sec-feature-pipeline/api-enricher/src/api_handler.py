@@ -36,20 +36,19 @@ class ApiHandler():
     def get_enriched_data(self) -> Generator[Dict, None, None]:
         
         buffer = []
-        for tx in self.transactions:
+        for tx, offset in self.transactions:
             tx['market_cap'] = self._get_market_cap(tx)
             tx['exchange'] = self._get_exchange(tx)
             tx['sic'] = self._get_sic(tx)
             
-            buffer.append(tx)
+            buffer.append((tx, offset))
            
             if len(buffer) >= self.buffer_size:  
-                yield from buffer  
-                buffer = []  
-               
+                return buffer  
+                  
         #Yield the remaining transactions
         if buffer:
-            yield from buffer
+           return buffer
 
 
     def _get_market_cap(self, tx: dict) -> int:
@@ -68,30 +67,30 @@ class ApiHandler():
                 day=1), periods=1, freq='BMS')[0].date()
 
         except (ValueError, TypeError):
+            fbd = None
             self._log_error(tx, self.failed_date_path, 'missing_date')
        
         # If the filing date is recent, query Yahoo Finance & append to the local dataset
-        if fbd >= datetime(2024, 9, 1).date():
-            ticker = tx.get('ticker')
-            try:
-                mcap = yf.Ticker(ticker.info.get('marketCap'))
+        if fbd:    
+            if fbd >= datetime(2024, 9, 1).date():
+                ticker = tx.get('ticker')
+                try:
+                    mcap = yf.Ticker(ticker.info.get('marketCap'))
 
-                pd.DataFrame(
-                    [[ticker, mcap, fbd]],
-                    columns=['ticker', 'mcap', 'date']
-                ).to_parquet(self.mcaps_path, engine='pyarrow', append=True)
+                    pd.DataFrame(
+                        [[ticker, mcap, fbd]],
+                        columns=['ticker', 'mcap', 'date']
+                    ).to_parquet(self.mcaps_path, engine='pyarrow', append=True)
 
-                return mcap
-            except:
-                return None
+                    return mcap
+                except:
+                    return None
         # Otherwise, look up the value directly in the local dataset
-        try:
-            
+        try: 
             row = self.mcaps[
                 (self.mcaps['ticker'] == tx.get('ticker').upper()) &
                 (self.mcaps['fbd'] == fbd)
             ]
-            
             return int(row['marketcap'].iloc[0])
 
         # In case it fails, record it in the failed dataset
@@ -103,11 +102,12 @@ class ApiHandler():
         try:
             return self.mapper['exchange'].get(tx.get('company_cik', None), None)
         except:
-            ticker = yf.Ticker(tx.get('ticker'))
-            return ticker.info.get('exchange')
+            try:
+                ticker = yf.Ticker(tx.get('ticker'))
+                return ticker.info.get('exchange')
         
-        finally:
-            self._log_error(tx, self.failed_exchange_path, 'missing_exchange')
+            except:
+                self._log_error(tx, self.failed_exchange_path, 'missing_exchange')
 
 
     def _get_sic(self, tx: dict) -> str:

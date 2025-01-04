@@ -1,23 +1,18 @@
 from config import config
-from typing import List, Dict, Generator
+from typing import List, Generator
 from loguru import logger
 from quixstreams import Application
 from datetime import datetime
 from parser import Form4Parser
-from io import BytesIO
 import xxhash
 import json
-from itertools import islice
-from datetime import timedelta
-import time
+from confluent_kafka import TopicPartition
 
 app = Application(
     broker_address=config.kafka_broker_address,
     consumer_group=config.consumer_group,
     auto_offset_reset=config.auto_offset_reset,
-    #processing_guarantee=config.processing_guarantee,
-    consumer_extra_config={'enable.auto.offset.store': True}
-           
+    #consumer_extra_config={'enable.auto.offset.store': True}  
 )
 
 input_topic = app.topic(
@@ -32,54 +27,52 @@ output_topic = app.topic(
     key_serializer='string'
 )
 
-def last_n_days(n: int) -> int:
-    return (datetime.now() - timedelta(days=n*365)).timestamp() * 1000
-
-def consume_data() -> List[str]:
-    
-    urls = []
-    with app.get_consumer(auto_commit_enable=True) as consumer:
-    
-        consumer.subscribe(topics = [input_topic.name])
-
-        while True:
-            message = consumer.poll(config.poll_timeout)
-            if message is None:
-                return urls
+def consume_data(consumer) -> tuple[List[str], any]:
+    """Consumes a batch of urls from the input topic 
+    and returns them as a list of strings with their offsets"""
+    urls = []    
+    while True:
+        
+        message = consumer.poll(config.poll_timeout)
+        if message is None:
+            logger.warning('No new messages')
+            return urls, consumer
+        
+        if len(urls) >= config.buffer_size:
+            return urls, consumer
+        
+        try:
+            url = json.loads(message.value().decode('utf-8'))['file_path']
+            #Store the URL and its offset
+            urls.append((url, message.offset()))
             
-            try:
-                # If the date is not suitable, keep consuming  
-                if int(message.timestamp()[1]) < last_n_days(config.years):
-                    continue
-            except:
-                logger.error('Coudln\'t get timestamp')
-                pass
-           
-            try:
-                url = json.loads(message.value().decode('utf-8'))['file_path']
-                urls.append(url)
-                
-            except:
-                continue   
-                
+        except:
+            logger.error('Couldn\'t extract URL from message')
+            continue   
+
     
-def parse_and_produce_4Fs(urls: List[str], buffer_size: int) -> None:
+def parse_and_produce_4Fs(urls: List[str]) -> None:
 
     buffer = []
     if config.test_trial == 'True':
         urls = urls[:config.test_size]
-
-    for url in urls:
+    
+    for url, offset in urls:
+        
         filing_transactions = Form4Parser(url, config.sleep_time).create_txs()
+
         if filing_transactions:
             buffer.extend(filing_transactions)
         
-        if len(buffer) >= buffer_size:
+        if len(buffer) >= config.buffer_size:
             produce_data(buffer)
+            #Store the url offset of the last message produced
+            commit_offset(offset)
             buffer = []
-    
+    #If there are any remaining transactions in the buffer
     if buffer:
         produce_data(buffer)
+        commit_offset(offset)
 
 
 def produce_data(data: List[dict]) -> None:
@@ -90,26 +83,37 @@ def produce_data(data: List[dict]) -> None:
                 timestamp = int(datetime.strptime(
                     record['date'], '%Y-%m-%d').timestamp()
                 ) * 1000
+                
             except:
-                logger.error(record)
-                time.sleep(50)
+                try:
+                    if len(record['date'].split('-')) > 3:
+                        # If the date has time information, split out the date part
+                        date_str = '-'.join(record['date'].split('-')[:3])
+                        timestamp = int(datetime.strptime(
+                            date_str, '%Y-%m-%d').timestamp()
+                        ) * 1000
+                except:
+                    logger.error(f'Timestamp errror (Producer) {record}')
+                
             #Add timestamp to the record for future reference
             record['timestamp'] = timestamp
 
             try:
                 key = xxhash.xxh64(
-                    record['link'] + record['remaining_shares'] +
+                    record['link'] + str(record['remaining_shares']) +
                     ('1' if record['derivative'] else '0')
                 ).hexdigest()
 
             except:
                 #Create a key for the record without using link 
                 key = xxhash.xxh64(
-                    record['remaining_shares'] +
+                    str(record['remaining_shares']) +
                     ('1' if record['derivative'] else '0')
                 ).hexdigest()
 
-            
+            #Add key as a value as well
+            record['key'] = key
+
             message = output_topic.serialize(
                 key=key,
                 value=record,
@@ -124,31 +128,31 @@ def produce_data(data: List[dict]) -> None:
                 
     logger.debug(f"Produced {len(data)} messages")
 
-
-#Auxiliary function to batch records when producing data
-def batch_records(records: list, batch_size: int) -> Generator:
-    """Yield successive batches of size `batch_size` from `records`."""
-    for i in range(0, len(records), batch_size):
-        yield records[i:i + batch_size]
-
+#Auxiliary function to commit the offset after processing
+def commit_offset(offset: int) -> None:
+    """Commit the latest offset after processing."""
+    partition = TopicPartition(topic=input_topic.name, partition=0, offset=offset + 1)
+    consumer.commit(offsets=[partition])
 
 
 if __name__ == '__main__':
 
-    time.sleep(config.delay)
-    
+    #time.sleep(config.delay)
+    consumer = app.get_consumer(auto_commit_enable=False)
+    consumer.subscribe(topics = [input_topic.name])
+
     # Logs
     logger.info(f'Scraper Microservice Started')
     logger.info(f'Connected to redpanda broker at {config.kafka_broker_address}')
     logger.info(f'Input topic: {config.kafka_input_topic}')
     logger.info(f'Output topic: {config.kafka_output_topic}')
-    logger.info(f'ENV VARIABLES:\n ->TimeDelta: {config.years}\n ->Form Type : {config.form_type} \n ->Test Size: {config.test_size} \n ->Buffer Size: {config.buffer_size} \n')
-    
-    # Main loop
-    urls = consume_data()
-    transactions = parse_and_produce_4Fs(urls, config.buffer_size)
+   
+    while True:
+        urls, consumer = consume_data(consumer)
+        transactions = parse_and_produce_4Fs(urls)
 
-    logger.info(f'Scraper Finished scraping!. Exiting...')
+
+logger.info(f'Scraper Finished scraping!. Exiting...')
 
 
 

@@ -94,19 +94,23 @@ class EssentialTrade(BaseModel):
 
         # Iterate through elements and accumulate holdings
         for h in holdings:
-            amount = float(h.find(holding_amounts).text)
-            ownership = str(h.find(holding_ownership).text)
-
+            try:
+                amount = float(h.find(holding_amounts).text)
+                ownership = str(h.find(holding_ownership).text)
+            except:
+                continue
             if ownership == 'D':
                 direct_amount += amount
             elif ownership == 'I':
                 indirect_amount += amount
+                
+        # Set holdings if both are present
+        if direct_amount and indirect_amount:
+            if not self.is_derivative:
+                self.direct_holding, self.indirect_holding = direct_amount, indirect_amount
 
-        if not self.is_derivative:
-            self.direct_holding, self.indirect_holding = direct_amount, indirect_amount
-
-        else:
-            self.d_direct_holding, self.d_indirect_holding = direct_amount, indirect_amount
+            else:
+                self.d_direct_holding, self.d_indirect_holding = direct_amount, indirect_amount
 
     def _handle_owner_code(self):
         self.owner_code = "".join(

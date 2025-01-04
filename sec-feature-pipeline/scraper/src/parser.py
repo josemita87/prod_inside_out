@@ -33,7 +33,6 @@ class Form4Parser:
         
         except Exception as e:
             logger.error(f"\n\nFailed to get filing: {e}, {self.url}\n\n")
-            time.sleep(5)
             return None
         
     def create_txs(self) -> list[dict]:

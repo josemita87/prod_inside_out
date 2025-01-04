@@ -108,9 +108,10 @@ def get_historic_data(form_type: str, years: int) -> None:
 
         for quarter in ['QTR1', 'QTR2', 'QTR3', 'QTR4']:
             df = fetch_parse_data(year, quarter)
-            filings = df[df['form_type'] == form_type]
-
-            produce_data(filings)
+            if isinstance(df, pd.DataFrame):
+                if not df.empty:
+                    filings = df[df['form_type'] == form_type]
+                    produce_data(filings)
 
 
 def get_latest_data(form_type: str) -> None:
@@ -137,7 +138,7 @@ if __name__ == '__main__':
 
     if config.mode == 'historical':
         get_historic_data(config.form_type, config.years)
-    
+        
     elif config.mode == 'latest':
         get_latest_data(config.form_type)
 

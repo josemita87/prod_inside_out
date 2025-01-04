@@ -66,6 +66,7 @@ if __name__ == "__main__":
             (txs['ticker'] == ticker)
             &(txs['date'] > offset)
         ]
+       
         if txs_to_process.empty:
             continue
 
@@ -89,11 +90,10 @@ if __name__ == "__main__":
         )
 
         logger.debug(
-            f"Processed {len(updated_txs)} transactions for {ticker}"
+            f"Processed {updated_txs} transactions for {ticker}"
         )
         # Push data to fs
-        if not updated_txs.empty:
-            feature_store.push_returns_data(updated_txs)
+        feature_store.push_returns_data(updated_txs)
     
     # Finish remaining materializations
     feature_store.last_materialization_jobs()

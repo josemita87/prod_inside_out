@@ -6,14 +6,7 @@ import src.kafka_topic as kafka_topic
 from loguru import logger 
 
 # Connect to the Kafka topic
-topic = kafka_topic.Connection(
-    config.kafka_broker_address,
-    config.kafka_input_topic,
-    config.consumer_group, 
-    config.auto_offset_reset,
-    config.processing_guarantee
-    
-)
+topic = kafka_topic.Connection()
 
 # Connect to the feature store
 feature_store = Connection()
@@ -38,8 +31,9 @@ if __name__ == "__main__":
         )
             
         if data:
-            data:pd.DataFrame = data_cleaning(data)
             data:pd.DataFrame = validate_and_reduce_mem_storage(data)
+            data:pd.DataFrame = data_cleaning(data)
+            
             
             feature_store.push_data(
                 data, 

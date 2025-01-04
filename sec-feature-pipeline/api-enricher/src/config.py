@@ -1,7 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import Field, field_validator
-from typing import List, Literal, Optional
-
+from pydantic import Field
 
 class Config(BaseSettings):
     
@@ -9,11 +7,12 @@ class Config(BaseSettings):
     kafka_broker_address: str = Field(..., env='KAFKA_BROKER_ADDRESS')
     kafka_input_topic: str = Field(..., env='KAFKA_INPUT_TOPIC') 
     kafka_output_topic: str = Field(..., env='KAFKA_OUTPUT_TOPIC')
-    buffer_size: int = Field(..., env='BUFFER_SIZE')
-    consumer_group: str = Field(..., env='CONSUMER_GROUP')
     auto_offset_reset: str = Field(..., env='AUTO_OFFSET_RESET')
+    consumer_group: str = Field(..., env='CONSUMER_GROUP')
+    
     poll_timeout: int = Field(..., env='POLL_TIMEOUT')
-    processing_guarantee: str = Field(..., env='PROCESSING_GUARANTEE')
+    buffer_size: int = Field(..., env='BUFFER_SIZE')
+
     # Api  Paths
     mcaps_path: str = Field(..., env='MCAPS_PATH')
     mapper_path: str = Field(..., env='MAPPER_PATH')
@@ -26,4 +25,6 @@ class Config(BaseSettings):
     
     #Docker Compose settings
     delay: int = Field(..., env='DELAY')
+    sleep_time: float = Field(..., env='SLEEP_TIME')
+
 config = Config()
