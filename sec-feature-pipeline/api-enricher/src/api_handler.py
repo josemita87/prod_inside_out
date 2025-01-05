@@ -130,13 +130,16 @@ class ApiHandler():
             updated_data.to_parquet(path, index=False)
 
         if error == 'missing_mcap':
-            _date = datetime.strptime(tx.get('date'), '%Y-%m-%d').date()
-            fbd = pd.date_range(start=_date.replace(
-                day=1), periods=1, freq='BMS')[0].date()
-            failed_data = pd.DataFrame(
-                [[tx.get('ticker').upper(), fbd]], columns=['ticker', 'date'])
-            append_to_parquet(path, failed_data)
-
+            try:
+                _date = datetime.strptime(tx.get('date'), '%Y-%m-%d').date()
+                fbd = pd.date_range(start=_date.replace(
+                    day=1), periods=1, freq='BMS')[0].date()
+                failed_data = pd.DataFrame(
+                    [[tx.get('ticker').upper(), fbd]], columns=['ticker', 'date'])
+                append_to_parquet(path, failed_data)
+                
+            except:
+                self._log_error(tx, self.failed_date_path, 'missing_date')
         elif error == "missing_date":
             failed_data = pd.DataFrame(
                 [tx.get('ticker').upper()], columns=['ticker'])

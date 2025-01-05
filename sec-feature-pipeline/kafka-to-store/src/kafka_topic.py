@@ -38,20 +38,16 @@ class Connection:
                     return True, buffer
             
                 if message:
-                    # Decode the key and value & add to buffer
-                    key = {'key': message.key().decode('utf-8')}
+        
                     updated_values = json.loads(message.value().decode('utf-8'))
-                    
-                    # Convert the date to datetime object
                     if 'date' in updated_values:
-                        updated_values['date'] = datetime.strptime(updated_values['date'], '%Y-%m-%d')
+                        updated_values['date'] = datetime.strptime(updated_values['date'][:10], '%Y-%m-%d')
                     
-                    merged = {**key, **updated_values}
-                    buffer.append(merged)
+                    buffer.append(updated_values)
                     
                 
                 if len(buffer) >= buffer_size:
-                    return False, buffer
+                    return False, pd.DataFrame(buffer)
                     
 
         

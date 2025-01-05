@@ -21,8 +21,7 @@ if __name__ == "__main__":
     logger.info('Kafka to Feature Store Microservice Started')
     logger.info(f'Connected to Kafka broker at {config.kafka_broker_address}')
     logger.info(f'Input topic: {config.kafka_input_topic}')
-    logger.info(f'ENV VARIABLES:\n ->Buffer Size: {config.buffer_size}\n ->Feature Group Name: {config.feature_group_form_4_basic}\n ->Feature Group Version: {config.feature_group_version}')
-    
+   
     while not is_finished:
         
         is_finished, data = topic.consume_data(
@@ -30,18 +29,20 @@ if __name__ == "__main__":
             timeout=config.poll_timeout
         )
             
-        if data:
-            data:pd.DataFrame = validate_and_reduce_mem_storage(data)
+        if not data.empty:
             data:pd.DataFrame = data_cleaning(data)
+            data:pd.DataFrame = validate_and_reduce_mem_storage(data)
             
             
             feature_store.push_data(
                 data, 
                 schema = config.expected_schema
             )
+
         else:
             logger.info('No more messages to consume. Exiting kafka-to-store...')
             break
 
     # Run the last materialization
+    logger.info('No more messages to consume. Exiting kafka-to-store...')
     feature_store.last_materialization()

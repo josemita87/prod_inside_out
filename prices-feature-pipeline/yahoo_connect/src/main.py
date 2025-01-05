@@ -81,10 +81,7 @@ if __name__ == '__main__':
 
         #Extract the current data from the feature store for processing tickers
         current_data = feature_store.fetch_price_data(
-            processing_tickers=processing_tickers,
-            feature_view_name=config.feature_view_name,
-            feature_view_version=config.feature_view_version,
-            inference_blueprint=config.inference_blueprint
+            processing_tickers=processing_tickers
         )
         
         #Fetch the latest data from Yahoo Finance for the given processing tickers

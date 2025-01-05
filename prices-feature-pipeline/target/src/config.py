@@ -25,6 +25,7 @@ class Config(BaseSettings):
     npartitions: int = Field(1, json_schema_extra={'env': 'NPARTITIONS'})
     delta_period: int = Field(30, json_schema_extra={'env': 'DELTA_PERIOD'})
     offset_buffer_size: int = Field(10, json_schema_extra={'env': 'DELTA_BUFFER_SIZE'})
+    acquired_disposed: str = Field('A', json_schema_extra={'env': 'ACQUIRED_DISPOSED'})
 
     class Config:
         env_file = ".env"

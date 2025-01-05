@@ -10,7 +10,7 @@ load_dotenv(".credentials.env")
 class Config(BaseSettings):
     project_name: str = Field(..., json_schema_extra={'env': 'PROJECT_NAME'})
     feature_group_prices: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_NAME'})
-    feature_group_form4: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_FORM4'})
+    feature_group_form4_basic: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_FORM4_BASIC'})
     feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
     feature_view_version: int = Field(..., json_schema_extra={'env': 'FEATURE_VIEW_VERSION'})
     feature_view_name: str = Field(..., json_schema_extra={'env': 'FEATURE_VIEW_NAME'})

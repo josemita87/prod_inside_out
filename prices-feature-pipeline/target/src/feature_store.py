@@ -106,11 +106,8 @@ class Connection:
                 }
             )
 
-            if self.returns_job and \
-                self.materialization_counter_returns >= \
-                    config.materialization_batch_size:
-                self.returns_job.run()
-                self.materialization_returns = 0
+            self.returns_job.run()
+            self.materialization_returns = 0
 
     def fetch_offset(self, ticker: str) -> int:
         
@@ -198,14 +195,15 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
     """
     data['link'] = data['link'].astype('str')
 
-    # Convert columns to categorical where appropriate
     for col in ['company_cik', 'ticker', 'insider_cik', 'insider_name', 
                 'owner_code', 'exchange', 'acquired_disposed', 'coding', 'sic']:
-        data[col] = data[col].astype('category')
+        if col in data.columns:
+            data[col] = data[col].astype('category')
 
     # Convert booleans to actual boolean dtype
     for col in ['rule105b1', 'derivative', 'equity_swap', 'ownership']:
-        data[col] = data[col].astype('bool')
+        if col in data.columns:
+            data[col] = data[col].astype('bool')
 
     # Convert numeric columns to more memory-efficient types
     numeric_columns = {
@@ -219,8 +217,9 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
         'pct_change': 'float32',
     }
     for col, dtype in numeric_columns.items():
-        data[col] = pd.to_numeric(data[col], errors='coerce').astype(dtype)
-        data = data.dropna(subset=[col])  # Drop rows where conversion failed
+        if col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors='coerce').astype(dtype)
+            data = data.dropna(subset=[col])  # Drop rows where conversion failed
 
     # Convert 'date' to datetime
     data['date'] = pd.to_datetime(data['date'], errors='coerce')

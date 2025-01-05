@@ -3,9 +3,7 @@ import pandas as pd
 from typing import Tuple, Any
 from loguru import logger
 from config import config
-
-#refactor config parameters
-#add buffer for offline materialization
+import time
 
 class Connection:  
 
@@ -25,7 +23,8 @@ class Connection:
             primary_key=['key'],
             event_time='date'
         )
-
+        logger.debug(self.fg_form4)
+        time.sleep(10)
         # Initialize the job and materialization counter
         self.job = None
         self.materialization_counter = 0
@@ -73,8 +72,9 @@ def data_cleaning(data: list[dict]) -> pd.DataFrame:
     """
 
     #Drop specific columns from the dataframe
-    #if config.drop_api:
-        #data = data.drop([config.drop_api], axis=1)
+    if config.api_drop:
+        data.drop([config.api_drop], axis=1, inplace = True)
+
     # Convert the list of dicts to a DataFrame
     data = pd.DataFrame(data)
 
@@ -82,7 +82,7 @@ def data_cleaning(data: list[dict]) -> pd.DataFrame:
     data = data.drop_duplicates()
 
     # Drop rows with NaN values in any column
-    #data = data.dropna()
+    data = data.dropna()
 
     return data
 
@@ -105,14 +105,14 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
     for col in ['rule105b1', 'derivative', 'equity_swap', 'ownership']:
         if col in data.columns:
             data[col] = data[col].astype('bool')
-
+   
     # Convert numeric columns to more memory-efficient types
     numeric_columns = {
         'shares': 'int32',
-        'price': 'float32',
+        'price': 'float64',
         'remaining_shares': 'int32',
-        'direct_holding': 'int32',
-        'indirect_holding': 'int32',
+        'direct_holding': 'int64',
+        'indirect_holding': 'int64',
         'market_cap': 'int64',
         'timestamp': 'int64',
     }
