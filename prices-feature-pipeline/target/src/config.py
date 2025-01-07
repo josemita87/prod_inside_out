@@ -25,6 +25,9 @@ class Config(BaseSettings):
     npartitions: int = Field(1, json_schema_extra={'env': 'NPARTITIONS'})
     delta_period: int = Field(30, json_schema_extra={'env': 'DELTA_PERIOD'})
     offset_buffer_size: int = Field(10, json_schema_extra={'env': 'DELTA_BUFFER_SIZE'})
+
+    # Filters
+    filter_key: str = Field(..., json_schema_extra={'env':'FILTER_KEY'})
     acquired_disposed: str = Field('A', json_schema_extra={'env': 'ACQUIRED_DISPOSED'})
 
     #Aggregation

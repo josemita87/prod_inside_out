@@ -56,11 +56,12 @@ def parse_and_produce_4Fs(urls: List[str]) -> None:
     buffer = []
     if config.test_trial == 'True':
         urls = urls[:config.test_size]
-    
+    import time
     for url, offset in urls:
         
+        
         filing_transactions = Form4Parser(url, config.sleep_time).create_txs()
-
+        
         if filing_transactions:
             buffer.extend(filing_transactions)
         
@@ -69,6 +70,7 @@ def parse_and_produce_4Fs(urls: List[str]) -> None:
             #Store the url offset of the last message produced
             commit_offset(offset)
             buffer = []
+        
     #If there are any remaining transactions in the buffer
     if buffer:
         produce_data(buffer)

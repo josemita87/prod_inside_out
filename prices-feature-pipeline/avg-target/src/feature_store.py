@@ -16,12 +16,6 @@ class Connection:
         )
         self.fs = self.project.get_feature_store()
     
-        # Materialization counters
-        self.avg_job=None
-        self.offset_job=None
-        self.materialization_counter_offset = 0
-        self.materialization_counter_avg = 0
-
         # Initialize feature group connections
         self.fg_f4_target = self.fs.get_or_create_feature_group(
             name=config.feature_group_target,
@@ -42,84 +36,26 @@ class Connection:
             event_time='date'
         )
 
-        #Delta mappers
-        try:
-            self.offset_df = self.fg_offset_avg.read()
-            self.offset_dict = dict(
-            zip(
-                self.offset_df['ticker'], 
-                self.offset_dict['date']
-                )
-            )
-        except:
-            self.offset_df = pd.DataFrame()
-            self.offset_dict = {}
-
     
     def fetch_4f_transactions(self) -> pd.DataFrame:
         # Read and return data from the feature store
         return self.fg_f4_target.read(read_options={"use_hive": True})
-        
-
-    def fetch_offset(self, ticker: str) -> int:
-        
-        try:
-            #Fetch existing records 
-            offset = self.offset_dict[ticker]
-            logger.debug(f"Offset for {ticker}: {offset}")
-
-        except:
-            offset = 0
-
-        offset = pd.to_datetime(offset, unit='ms', utc=True)
-        return offset
     
 
     def push_returns_data(self, data: pd.DataFrame) -> None:
         
         if not data.empty: 
-            try:
-                self.avg_job, _ = self.fg_f4_avg.insert(
-                    data, 
-                    write_options = {
-                        'start_offline_materialization':False,
-                        'mode':'append' 
-                    }
-                )
-            except Exception as e:
-                self.avg_job=None
-
-            if self.avg_job and self.materialization_counter_avg >= config.materialization_batch_size:
-                self.avg_job.run()
-                self.materialization_counter_avg = 0
-
-
-    def update_delta_table_batch(self, batch:dict) -> None:
-
-        #Update the delta table with latest offsets priority (inplace)
-        self.offset_dict.update(batch)
-        df = pd.DataFrame.from_dict(self.offset_dict, orient='index').reset_index()
-        df.columns = ['ticker', 'date']
-        try:
-            self.offset_job, _ = self.fg_offset_avg.insert(
-                df, write_options = {
-                    'start_offline_materialization':False,
-                    'mode':'overwrite' 
+         
+            self.fg_f4_avg.insert(
+                data, 
+                write_options = {
+                    'start_offline_materialization':True,
+                    'mode':'append' 
                 }
             )
-        except:
-            self.offset_job=None
-
-        if self.offset_job and self.materialization_counter_offset >= config.materialization_batch_size:
-            self.offset_job.run()
-            self.materialization_counter_offset = 0
-
-    def last_materialization_jobs(self):
-        if self.avg_job:
-            self.avg_job.run()
-        if self.offset_job:
-            self.offset_job.run()
-
+           
+        
+   
 #Auxiliary function
 def data_cleaning(data: pd.DataFrame) -> pd.DataFrame:
     """
