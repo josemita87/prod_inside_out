@@ -92,4 +92,4 @@ if __name__ == '__main__':
         feature_store.push_data(new_data)
 
     logger.debug('Finished processing all tickers')
-    feature_store.last_materialization_jobs()
+    feature_store.materialization_jobs()

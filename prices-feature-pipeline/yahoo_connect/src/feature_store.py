@@ -27,7 +27,6 @@ class Connection:
             event_time='date'
         )
 
-        self.materialization_counter = 0
         self.job = None
 
     def fetch_ticker_data(self) -> pd.DataFrame:
@@ -68,12 +67,9 @@ class Connection:
                     'mode':'append' 
                 }
             )
-        
-            if self.job and self.materialization_counter >= config.materialization_batch_size:
-                self.job.run()
-                self.materialization_counter = 0
 
-    def last_materialization_jobs(self):
+
+    def materialization_jobs(self):
         self.job.run()
         
 # Auxiliary function

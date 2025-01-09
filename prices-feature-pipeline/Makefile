@@ -46,13 +46,9 @@ run-prod-yahoo: stop-yahoo build-yahoo
 
 run-prod-target: stop-target build-target
 	docker run \
-	-it --network redpanda-network \
+	-it \
+	--network redpanda-network \
 	--env-file target/.env \
-	--name target target
-
-
-run-prod-avg: stop-avg build-avg
-	docker run \
-	-it --network redpanda-network \
-	--env-file avg-target/.env \
-	--name avg-target avg-target
+	--name target \
+	-v /Users/calcatscubedos.l./Desktop/prod_inside_out/prices-feature-pipeline/target/src:/app/src \
+	target

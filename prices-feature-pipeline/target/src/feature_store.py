@@ -132,7 +132,6 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
         'timestamp': 'int64',
         'pct_change': 'float32',  
         'avg_target_expanding': 'float32',
-        'avg_target_rolling': 'float32',
         'price': 'float32'
         
     }

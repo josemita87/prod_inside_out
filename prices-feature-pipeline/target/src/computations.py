@@ -2,7 +2,7 @@ import dask.dataframe as dd
 import pandas as pd
 from loguru import logger
 import numpy as np
-from numba import njit
+from numba import jit
 
 
 
@@ -99,47 +99,57 @@ def compute_target(
     return end_state
 
 def compute_avg_target_price(
-        df: pd.DataFrame, expanding: bool, window_days:int = False) -> pd.DataFrame:
+        df: pd.DataFrame, timedelta:int) -> pd.DataFrame:
         
-    @njit
-    def expanding_mean_numba(arr):
-        n = len(arr)
-        result = np.empty(n)
-        cumulative_sum = 0.0
-        
-        for i in range(n):
-            cumulative_sum += arr[i]
-            result[i] = cumulative_sum / (i + 1)
-        
-        return result
+    # Constant period (days) covered (in milliseconds)
+    delta_ms = timedelta * 24 * 60 * 60 * 1000 
+
+    # Prepare an empty column to store the average pct_change
+    df['avg_pct_change'] = np.nan
+
+    # Extract timestamps and pct_changes for easier access
+    timestamps = df['timestamp'].values
+    pct_changes = df['pct_change'].values
+    tickers = df['ticker'].values
     
-    @njit
-    def rolling_mean_numba(arr, window):
-        result = np.empty(len(arr))
-        result[:] = np.nan  
+
+    # Numba JIT-compiled function for computing expanding averages
+    #@jit(nopython=True, parallel=True)
+    def expanding_average(tickers, timestamps, pct_changes, delta_ms):
+        avg_pct_changes = np.empty_like(pct_changes)  
         
-        for i in range(len(arr)):
-            if i + 1 >= window:
-                try:
-                    result[i] = arr[i + 1 - window:i + 1].mean()
-                except:
-                    result[i] = np.nan
-                    
+        # Initialize offset tracker
+        offset = 0
+        last_ticker = tickers[0]  
+        
+        for i in range(len(tickers)):
+            current_ticker = tickers[i]
+            current_timestamp = timestamps[i]
+            cutoff_time = current_timestamp - delta_ms
+            
+            # Reset offset if we move to a new ticker
+            if current_ticker != last_ticker:
+                offset = i 
+            
+            # Perform binary search to find the cutoff index for this ticker using np.searchsorted
+            idx = np.searchsorted(timestamps[offset:], cutoff_time, side='right') + offset
+            
+            if idx > offset:
+                # Get all pct_changes before the cutoff time for this ticker
+                valid_pct_changes = pct_changes[offset:idx]
+                avg_pct_changes[i] = np.mean(valid_pct_changes)  
             else:
-                result[i] = np.nan  
-        return result
+                avg_pct_changes[i] = np.nan  
+            
+            # Update the last_ticker for the next iteration
+            last_ticker = current_ticker
 
-    if expanding:
-        # Apply expanding mean per ticker
-        df['avg_target_expanding'] = df.groupby('ticker')['pct_change'].transform(
-            lambda x: expanding_mean_numba(x.to_numpy())
-        )
+        return avg_pct_changes
+
+    # Call the Numba-accelerated function
+    df['avg_target_expanding'] = expanding_average(tickers, timestamps, pct_changes, delta_ms)
+
     
-    # Apply rolling mean per ticker
-    #df['avg_target_rolling'] = df.groupby('ticker')['pct_change'].transform(
-    #    lambda x: rolling_mean_numba(x.to_numpy(), window=window_days)
-    #)
-
     return df
 
 

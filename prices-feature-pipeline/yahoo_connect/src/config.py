@@ -21,7 +21,7 @@ class Config(BaseSettings):
         "close": [-1.0],
         "ticker": ["INFERENCE_VALUE"],
     })
-    materialization_batch_size: int = Field(..., json_schema_extra={'env': 'MATERIALIZATION_BATCH_SIZE'})
+    
     
     buffer_size: int = Field(100, json_schema_extra={'env': 'BUFFER_SIZE'})
 

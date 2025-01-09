@@ -13,10 +13,15 @@ if __name__ == "__main__":
     feature_store = Connection()
 
     # Get transactions in the feature store
+    '''
     txs: pd.DataFrame = feature_store.fetch_4f_transactions(
         key=config.filter_key, value=config.acquired_disposed
     )
-                         
+    '''
+    #txs.to_csv('/app/src/txsv1.csv', index=False)
+                       
+    txs = pd.read_csv('/app/src/txsv1.csv')
+    prices = pd.read_csv('/app/src/pricesv1.csv')
     # Get the unique tickers to process
     tickers_to_process:list = sorted(txs['ticker'].unique())
 
@@ -24,15 +29,25 @@ if __name__ == "__main__":
     aggregated_df = computations.data_aggregation(txs, config.agg_dict)
     
     # Get the latest price data from the feature store
-    prices = feature_store.fetch_price_data(tickers_to_process)
 
-    # Get targets & avg-target price-related features
-    target_df = computations.compute_target(aggregated_df, prices, config.delta_period)
+    #prices = feature_store.fetch_price_data(tickers_to_process)
+
+    
+    #prices.to_csv('/app/src/pricesv1.csv', index = False) 
+
+
+
+    # Get targets & price-related features
+    target_df = computations.compute_target(
+        aggregated_df, 
+        prices, 
+        config.delta_period
+    )
     
     # Compute the average target price
     final_df = computations.compute_avg_target_price(
         df=target_df, 
-        expanding=config.expanding_window
+        timedelta=config.delta_period
     )
     
     # Clean data & reduce memory space
