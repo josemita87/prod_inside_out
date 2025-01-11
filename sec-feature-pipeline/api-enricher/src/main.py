@@ -29,7 +29,6 @@ def consume_data(consumer)-> list[tuple[dict, int]]:
 
     buffer:list[tuple] = []
     consumer.subscribe(topics=[input_topic.name])
-
     while True:
         message = consumer.poll(config.poll_timeout)
 
@@ -37,11 +36,17 @@ def consume_data(consumer)-> list[tuple[dict, int]]:
             if buffer:
                 return buffer
 
+
         #Append the message to the buffer with its offset
-        buffer.append((
-            json.loads(message.value().decode('utf-8')),
-            message.offset()
-        ))
+        try:
+            buffer.append((
+                json.loads(message.value().decode('utf-8')),
+                message.offset()
+            ))
+
+        
+        except Exception as e:
+            logger.error(f'Error consuming message: {e}')
         
         #If buffer is full, yield the data
         if len(buffer) >= config.buffer_size:

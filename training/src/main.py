@@ -13,14 +13,13 @@ import seaborn as sns
 pd.set_option('display.max_rows', None)
 
 # Fetch data
-fs = feature_store.Connection()
-data = fs.fetch_training_data()
+#fs = feature_store.Connection()
+#data = fs.fetch_training_data()
+data = pd.read_csv('/app/src/final_df.csv')
 
 # Drop unnecessary columns (based on domain knowledge)
 data = data.drop(columns=['ticker', 'company_cik', 'key', 'timestamp', 'date', 'coding', 'price'])
 
-# Drop rows with missing values
-data = data.dropna()
 
 # Define features (X) and target (y)
 X = data.drop(columns=['pct_change'])
@@ -37,8 +36,8 @@ importances = pd.Series(model.feature_importances_, index=X.columns)
 loguru.logger.info(f"Feature Importances: {importances.sort_values(ascending=False)}")
 
 # Train a linear regression model with the selected features
-X_selected = X[importances.nlargest(1).index]  # Use top 5 important features
-X_train, X_test, y_train, y_test = train_test_split(X_selected, y, test_size=0.2, random_state=42)
+X_selected = X[['avg_target_expanding', 'tx_value', 'market_cap']]  
+X_train, X_test, y_train, y_test = train_test_split(X_selected, y, test_size=0.3, random_state=42)
 
 regressor = LinearRegression()
 regressor.fit(X_train, y_train)
@@ -57,10 +56,10 @@ loguru.logger.info(f"R² Score: {r2:.4f}")
 merged_df = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
 
 # Debug: Log all rows of the merged DataFrame where predictions are negative
-loguru.logger.info(f"Merged DataFrame (Predicted Negative Returns):\n{merged_df[merged_df['Predicted'] < -0.2].head(150)}")
+loguru.logger.info(f"Merged DataFrame (Predicted Negative Returns):\n{merged_df[merged_df['Predicted'] < 0].head(150)}")
 
 # Plotting the correlation for predictions < 0
-negative_predictions = merged_df[merged_df['Predicted'] < -0.1]
+negative_predictions = merged_df[merged_df['Predicted'] < 0]
 plt.figure(figsize=(10, 6))
 sns.scatterplot(x=negative_predictions['Actual'], y=negative_predictions['Predicted'])
 plt.title('Correlation of Actual vs Predicted for Negative Returns')

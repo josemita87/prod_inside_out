@@ -72,8 +72,8 @@ def data_cleaning(data: list[dict]) -> pd.DataFrame:
     """
 
     #Drop specific columns from the dataframe
-    if config.api_drop:
-        data.drop([config.api_drop], axis=1, inplace = True)
+    #if config.api_drop:
+       # data.drop([config.api_drop], axis=1, inplace = True)
 
     # Convert the list of dicts to a DataFrame
     data = pd.DataFrame(data)

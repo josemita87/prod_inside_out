@@ -35,7 +35,7 @@ class Connection:
                 
                 message = consumer.poll(timeout)
                 if not message:
-                    return True, buffer
+                    return True, pd.DataFrame(buffer)
             
                 if message:
         

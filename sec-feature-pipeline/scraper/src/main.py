@@ -27,6 +27,8 @@ output_topic = app.topic(
     key_serializer='string'
 )
 
+
+
 def consume_data(consumer) -> tuple[List[str], any]:
     """Consumes a batch of urls from the input topic 
     and returns them as a list of strings with their offsets"""
