@@ -18,12 +18,15 @@ class Config(BaseSettings):
     delay:int = Field(0, env='DELAY')  # Default delay is 0
     
     # Hopsworks settings
+    hopsworks_connect: bool = Field(..., env='HOPSWORKS_CONNECT')
     project_name: str = Field(..., env='PROJECT_NAME')
     api_key: str = Field(..., env='API_KEY')
     feature_group_form_4_basic: str = Field(..., env='FEATURE_GROUP_FORM_4_BASIC')
     feature_group_version: int = Field(1, env='FEATURE_GROUP_VERSION')  # Default version is 1
     materialization_batch_size: int = Field(1000, env='MATERIALIZATION_BATCH_SIZE')  # Default batch size is 1000
     
+    # CSV settings
+    file_path: str = Field(..., env='FILE_PATH')
     # Expected schema as a class-level constant
     expected_schema: ClassVar[Dict[str, type]] = {
         "key": str,

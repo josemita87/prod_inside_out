@@ -5,16 +5,19 @@ from src.feature_store import Connection, validate_and_reduce_mem_storage, data_
 import src.kafka_topic as kafka_topic
 from loguru import logger 
 
-# Connect to the Kafka topic
-topic = kafka_topic.Connection()
 
-# Connect to the feature store
-feature_store = Connection()
 
 
 if __name__ == "__main__":
     
-    time.sleep(config.delay*3)
+    # Connect to the Kafka topic
+    topic = kafka_topic.Connection()
+
+    if config.hopsworks_connect:
+        
+        # Connect to the feature store
+        feature_store = Connection()
+
     is_finished = False
 
     # Logs
@@ -33,11 +36,14 @@ if __name__ == "__main__":
             data:pd.DataFrame = data_cleaning(data)
             data:pd.DataFrame = validate_and_reduce_mem_storage(data)
             
-            
-            feature_store.push_data(
-                data, 
-                schema = config.expected_schema
-            )
+            if config.hopsworks_connect:
+                feature_store.push_data(
+                    data, 
+                    schema = config.expected_schema
+                )
+            # If Hopsworks is not connected, save the data to a CSV file
+            else:
+                pd.to_csv(data, config.file_path, mode='a', header=False, index=False)
 
         else:
             logger.info('No more messages to consume. Exiting kafka-to-store...')
