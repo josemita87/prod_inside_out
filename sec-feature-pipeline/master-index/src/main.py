@@ -118,9 +118,10 @@ def get_latest_data(form_type: str) -> None:
 
     quarter = f'QTR{(datetime.now().month - 1) // 3 + 1}'
     df = fetch_parse_data(datetime.now().year, quarter)
-    filings = df[df['Form Type'] == form_type]
-
-    produce_data(filings)
+    if isinstance(df, pd.DataFrame):
+        if not df.empty:
+            filings = df[df['form_type'] == form_type]
+            produce_data(filings)
 
 
 
@@ -139,7 +140,7 @@ if __name__ == '__main__':
     if config.mode == 'historical':
         get_historic_data(config.form_type, config.years)
         
-    elif config.mode == 'latest':
+    elif config.mode == 'live':
         get_latest_data(config.form_type)
 
     else:

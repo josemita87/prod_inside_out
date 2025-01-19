@@ -1,5 +1,4 @@
 from config import config
-from typing import List, Generator
 from loguru import logger
 from quixstreams import Application
 from datetime import datetime
@@ -28,8 +27,7 @@ output_topic = app.topic(
 )
 
 
-
-def consume_data(consumer) -> tuple[List[str], any]:
+def consume_data(consumer) -> tuple[list[str], any]:
     """Consumes a batch of urls from the input topic 
     and returns them as a list of strings with their offsets"""
     urls = []    
@@ -53,14 +51,13 @@ def consume_data(consumer) -> tuple[List[str], any]:
             continue   
 
     
-def parse_and_produce_4Fs(urls: List[str]) -> None:
+def parse_and_produce_4Fs(urls: list[str]) -> None:
 
     buffer = []
     if config.test_trial == 'True':
         urls = urls[:config.test_size]
-    import time
+
     for url, offset in urls:
-        
         
         filing_transactions = Form4Parser(url, config.sleep_time).create_txs()
         
@@ -79,7 +76,7 @@ def parse_and_produce_4Fs(urls: List[str]) -> None:
         commit_offset(offset)
 
 
-def produce_data(data: List[dict]) -> None:
+def produce_data(data: list[dict]) -> None:
     
     with app.get_producer() as producer:
         for record in data:

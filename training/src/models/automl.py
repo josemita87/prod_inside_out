@@ -21,6 +21,10 @@ class AutoML:
         # Initialize H2O cluster
         h2o.init()
 
+        # Initialize best model attribute
+        self.best_model = None
+
+        
     def train_classifier(
         self, 
         data:h2o.frame, 

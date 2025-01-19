@@ -78,5 +78,14 @@ def main():
     # Plot actual vs predicted negative returns and financial result
     plot_predictions(y_negative, y_pred_negative, final_capital, capital_invested)
 
+    # Guardar el mejor modelo generado por AutoML
+    best_model = automl_model.get_best_model()  
+    output_path = "models/"  
+    os.makedirs(output_path, exist_ok=True)  
+
+    # Guarda el modelo
+    model_path = h2o.save_model(model=best_model, path=output_path, force=True)
+
+    logger.info(f"Modelo guardado en: {model_path}")
 if __name__ == "__main__":
     main()
