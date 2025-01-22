@@ -7,6 +7,7 @@ import requests
 from datetime import datetime
 import xxhash
 from io import BytesIO
+from monitor_live import SECLinkMonitor
 
 headers = {
     'User-Agent': 'CompanyE InvestmentServices admin@companye.com',
@@ -114,14 +115,25 @@ def get_historic_data(form_type: str, years: int) -> None:
                     produce_data(filings)
 
 
-def get_latest_data(form_type: str) -> None:
-
+def get_last_quarter_data(form_type: str) -> None:
     quarter = f'QTR{(datetime.now().month - 1) // 3 + 1}'
     df = fetch_parse_data(datetime.now().year, quarter)
     if isinstance(df, pd.DataFrame):
         if not df.empty:
             filings = df[df['form_type'] == form_type]
             produce_data(filings)
+
+def get_live_data(form_type: str) -> None:
+
+    # Generator object updated with the latest links
+    links = SECLinkMonitor().monitor()
+
+    # The generator is executed in this line, where links need to be iterated over.
+    # Once it is executed, the generator will try to yield values indefinedly, due
+    # to the while True loop in the monitor method.
+    
+    df = pd.DataFrame(links, columns=['file_path'])
+    produce_data(df)
 
 
 
@@ -141,7 +153,8 @@ if __name__ == '__main__':
         get_historic_data(config.form_type, config.years)
         
     elif config.mode == 'live':
-        get_latest_data(config.form_type)
+        #get_latest_data(config.form_type)
+        get_live_data(config.form_type)
 
     else:
         logger.error('Invalid mode. Exiting...')
