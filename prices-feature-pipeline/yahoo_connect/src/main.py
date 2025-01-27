@@ -5,11 +5,15 @@ from loguru import logger
 from src.config import config
 from src.feature_store import Connection, reduce_mem_storage
 import time
+import os
+from tqdm import tqdm
 
-# Initialize connection to Hopsworks
-feature_store = Connection()
 
-# Fetch the latest data from Yahoo Finance
+def initialize_data_source():
+    if config.hopsworks_connect:
+        return Connection()
+    return None
+
 def fetch_data_from_yahoo(prices: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
     """Fetches the latest data from Yahoo Finance for the given tickers
     
@@ -18,82 +22,74 @@ def fetch_data_from_yahoo(prices: pd.DataFrame, tickers: list[str]) -> pd.DataFr
         tickers (list[str]): List of tickers to fetch data for
     Returns:
         pd.DataFrame: Updated prices data with the new data only
-        """
-    
-    # Create a copy of the current prices data to append the new data
+    """
     all_prices = pd.DataFrame()
 
     for ticker in tickers:
-
-        # Get the latest date for each ticker in the current prices data (if any)
-        offset:datetime = prices.loc[
-            prices[prices['ticker'] == ticker]['date'].idxmax()
-        ] if not prices.empty else None
-
-        #If not latest date, set offset to None
-        offset = None if pd.isnull(offset) else offset
-
-        if offset:
-            new_data = yf.download(
-                ticker, 
-                start=offset + pd.Timedelta(days=1)
-            )['Close']
-
-        else:
-            new_data = yf.download(ticker)['Close']
-
         try:
-            # Convert the Series into a DataFrame with custom column names
-            new_data.reset_index(inplace=True) 
+            offset = prices.loc[prices['ticker'] == ticker]['date'].max() if not prices.empty else None
+            if offset:
+                offset = pd.to_datetime(offset)  # Ensure offset is a Timestamp
+                new_data = yf.download(ticker, start=offset + pd.Timedelta(days=1))['Close']
+            else:
+                new_data = yf.download(ticker)['Close']
+
+            new_data.reset_index(inplace=True)
             new_data['ticker'] = ticker
-            new_data.columns = ['date', 'close', 'ticker'] 
-            
-            # Reduce memory usage of the dataframe before appending it
+            new_data.columns = ['date', 'close', 'ticker']
             new_data = reduce_mem_storage(new_data)
 
-            if not all_prices.empty:
-                all_prices = pd.concat([all_prices, new_data], axis=0)
-                
-            else:
-                all_prices = new_data
-        
+            all_prices = pd.concat([all_prices, new_data], axis=0) if not all_prices.empty else new_data
         except Exception as e:
-            logger.error(f"Failed to fetch data for {ticker}: {e}")
+            #logger.error(f"Failed to fetch data for {ticker}: {e}")
             continue
 
     all_prices.sort_values(by=['ticker', 'date'], inplace=True)
+    return reduce_mem_storage(all_prices)
 
-    # Set the ticker as category to reduce space usage
-    all_prices['ticker'] = all_prices['ticker'].astype('category')
-
-    return all_prices
-
-
-
-
-
-if __name__ == '__main__':
+def fetch_tickers(data_source):
+    if config.hopsworks_connect:
+        return data_source.fetch_ticker_data().unique().tolist()
     
-    #Fetch the tickers from the feature store and convert them from an array to a list
-    tickers = feature_store.fetch_ticker_data().tolist()
+    # Read the CSV file with the specified headers
+    df = pd.read_csv(config.csv_path_form4, names=config.headers)
+    
+    # Ensure the 'ticker' column is in uppercase
+    df['ticker'] = df['ticker'].astype(str).str.upper()
+    
+    return df['ticker'].unique().tolist()
 
-    #Process data in ticker batches
-    for i in range(0, len(tickers), config.buffer_size):
+def fetch_current_data(data_source, processing_tickers):
+    if config.hopsworks_connect:
+        return data_source.fetch_price_data(processing_tickers=processing_tickers)
+    current_data = pd.read_csv(config.csv_path_prices, names=config.prices_headers)
+    return current_data[current_data['ticker'].isin(processing_tickers)]
 
-        logger.debug(f"Processing tickers {tickers[i:i+config.buffer_size]}...")
+def push_data(data, data_source):
+  
+    if data_source:
+        data_source.push_data(data)
+        return
+    with open(config.csv_path_prices, 'a') as f:
+        data.to_csv(f, header=False, index=False)
+
+def main():
+    data_source = initialize_data_source()
+    tickers = fetch_tickers(data_source)
+    logger.debug(len(tickers))
+
+    # Use tqdm to display the progress bar
+    for i in tqdm(range(0, len(tickers), config.buffer_size), desc="Processing tickers", unit="batch"):
         processing_tickers = tickers[i:i+config.buffer_size]
+        logger.debug(f"Processing tickers {processing_tickers}...")
 
-        #Extract the current data from the feature store for processing tickers
-        current_data = feature_store.fetch_price_data(
-            processing_tickers=processing_tickers
-        )
-        
-        #Fetch the latest data from Yahoo Finance for the given processing tickers
+        current_data = fetch_current_data(data_source, processing_tickers)
         new_data = fetch_data_from_yahoo(current_data, processing_tickers)
-        logger.debug(new_data)
-
-        #Push the new data to the feature store (append mode)
-        feature_store.push_data(new_data)
+        push_data(new_data, data_source)
 
     logger.debug('Finished processing all tickers')
-    feature_store.materialization_jobs()
+    if data_source:
+        data_source.materialization_jobs()
+
+if __name__ == '__main__':
+    main()

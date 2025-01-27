@@ -18,6 +18,6 @@ run-prod-training: stop-training build-training
 	--env-file .env \
 	--env-file .credentials.env \
 	--name training \
-	-v /Users/calcatscubedos.l./Desktop/prod_inside_out/training/src:/app/src \
+	-v /Users/josemita87/Documents/prod_inside_out/training/src:/app/src \
 	training
 

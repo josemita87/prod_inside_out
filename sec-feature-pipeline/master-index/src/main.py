@@ -151,9 +151,13 @@ if __name__ == '__main__':
 
     if config.mode == 'historical':
         get_historic_data(config.form_type, config.years)
+
+
+    elif config.mode == 'last_quarter':
+        get_last_quarter_data(config.form_type)
         
     elif config.mode == 'live':
-        #get_latest_data(config.form_type)
+       
         get_live_data(config.form_type)
 
     else:

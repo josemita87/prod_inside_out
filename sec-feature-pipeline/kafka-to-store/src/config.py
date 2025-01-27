@@ -5,28 +5,28 @@ from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
 
 
-
 class Config(BaseSettings):
     
     # Kafka settings
     kafka_broker_address: str = Field(..., env='KAFKA_BROKER_ADDRESS')
     kafka_input_topic: str = Field(..., env='KAFKA_INPUT_TOPIC') 
-    buffer_size: int = Field(1000, env='BUFFER_SIZE')  # Default buffer size is 1000
-    poll_timeout: int = Field(10, env='POLL_TIMEOUT')  # Default timeout is 10 seconds
+    buffer_size: int = Field(1000, env='BUFFER_SIZE')  
+    poll_timeout: int = Field(10, env='POLL_TIMEOUT')  
     consumer_group: str = Field(..., env='CONSUMER_GROUP')
     auto_offset_reset: str = Field(..., env='AUTO_OFFSET_RESET')
-    delay:int = Field(0, env='DELAY')  # Default delay is 0
+    delay:int = Field(0, env='DELAY')  
     
     # Hopsworks settings
     hopsworks_connect: bool = Field(..., env='HOPSWORKS_CONNECT')
     project_name: str = Field(..., env='PROJECT_NAME')
-    api_key: str = Field(..., env='API_KEY')
+    hopsworks_api_key: str = Field(..., env='HOPSWORKS_API_KEY')
     feature_group_form_4_basic: str = Field(..., env='FEATURE_GROUP_FORM_4_BASIC')
     feature_group_version: int = Field(1, env='FEATURE_GROUP_VERSION')  # Default version is 1
     materialization_batch_size: int = Field(1000, env='MATERIALIZATION_BATCH_SIZE')  # Default batch size is 1000
     
     # CSV settings
-    file_path: str = Field(..., env='FILE_PATH')
+    csv_path: str = Field(..., env='CSV_PATH')
+
     # Expected schema as a class-level constant
     expected_schema: ClassVar[Dict[str, type]] = {
         "key": str,
@@ -47,16 +47,13 @@ class Config(BaseSettings):
         "coding": str,
         "direct_holding": str,
         "indirect_holding": str,
-        "market_cap": str,
-        "exchange": str,
-        "sic": str,
     }
     
-
     #Training settings
     api_drop: str = Field(..., env='API_DROP')
 
     class Config:
-        env_file = ".env"  # Specify the .env file for local development
+        pass
+        
 
 config = Config()

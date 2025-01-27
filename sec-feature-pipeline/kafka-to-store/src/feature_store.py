@@ -12,7 +12,7 @@ class Connection:
         # Initialize Feature Store Object
         project = hopsworks.login(
             project=config.project_name,
-            api_key_value=config.api_key,
+            api_key_value=config.hopsworks_api_key,
         )
         self.fs = project.get_feature_store()
     
@@ -23,8 +23,7 @@ class Connection:
             primary_key=['key'],
             event_time='date'
         )
-        logger.debug(self.fg_form4)
-        time.sleep(10)
+        
         # Initialize the job and materialization counter
         self.job = None
         self.materialization_counter = 0

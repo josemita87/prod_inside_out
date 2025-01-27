@@ -9,25 +9,38 @@ load_dotenv(".credentials.env")
 
 class Config(BaseSettings):
 
+    # Hopsworks settings
     project_name: str = Field(..., json_schema_extra={'env': 'PROJECT_NAME'})
     api_key: str = Field(..., json_schema_extra={'env': 'API_KEY'})
-
-    # Feature group names
     feature_group_prices: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_PRICES'})
     feature_group_form4_basic: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_FORM4_BASIC'})
     feature_group_target: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_TARGET'})
     feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
-    
-
-    #Other parameters
     event_time: str = Field(..., json_schema_extra={'env': 'EVENT_TIME'})
-    npartitions: int = Field(1, json_schema_extra={'env': 'NPARTITIONS'})
-    delta_period: int = Field(..., json_schema_extra={'env': 'DELTA_PERIOD'})
-    
 
-    # Filters
+    # CSV settings
+    hopsworks_connect: bool = Field(..., json_schema_extra={'env': 'HOPSWORKS_CONNECT'})
+    csv_path_prices: str = Field(..., json_schema_extra={'env': 'CSV_PATH_PRICES'})
+    csv_path_form4: str = Field(..., json_schema_extra={'env': 'CSV_PATH_FORM4'})
+    csv_path_final: str = Field(..., json_schema_extra={'env': 'CSV_PATH_FINAL'})
+    headers: list = Field(
+        default=[
+            "company_cik", "ticker", "insider_cik", "insider_name", "owner_code",
+            "rule105b1", "derivative", "link", "shares", "acquired_disposed",
+            "price", "date", "remaining_shares", "ownership", "coding",
+            "direct_holding", "indirect_holding", "equity_swap", "timestamp", "key"
+        ],
+        json_schema_extra={'env': 'CSV_HEADERS'}
+    )
+    prices_headers: list = Field(
+        default=["date", "close", "ticker"],
+        json_schema_extra={'env': 'PRICES_HEADERS'}
+    )
+
+    #Investment settings
+    delta_period: int = Field(..., json_schema_extra={'env': 'DELTA_PERIOD'})
     filter_key: str = Field(..., json_schema_extra={'env':'FILTER_KEY'})
-    acquired_disposed: str = Field('A', json_schema_extra={'env': 'ACQUIRED_DISPOSED'})
+    acquired_disposed: str = Field(..., json_schema_extra={'env': 'ACQUIRED_DISPOSED'})
 
     #Aggregation
     agg_dict:dict = Field({
@@ -60,6 +73,7 @@ class Config(BaseSettings):
         # 'mean' method aggregation
         'price': 'mean'
     })
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

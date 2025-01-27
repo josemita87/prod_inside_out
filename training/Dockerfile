@@ -1,12 +1,22 @@
 # Use Python slim image
-FROM python:3.12-slim
+FROM python:3.11-slim
+
+# Add src to the PYTHONPATH
+ENV PYTHONPATH=/app
+
+ENV PYTHONBUFFERED=1
 
 # Install necessary dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     build-essential \
+    curl \
     openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Rust and Cargo
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Set working directory
 WORKDIR /app

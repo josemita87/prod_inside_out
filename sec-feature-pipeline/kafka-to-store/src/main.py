@@ -1,10 +1,8 @@
 from config import config
-import time
 import pandas as pd
 from src.feature_store import Connection, validate_and_reduce_mem_storage, data_cleaning
 import src.kafka_topic as kafka_topic
 from loguru import logger 
-
 
 
 
@@ -21,10 +19,11 @@ if __name__ == "__main__":
     is_finished = False
 
     # Logs
-    logger.info('Kafka to Feature Store Microservice Started')
     logger.info(f'Connected to Kafka broker at {config.kafka_broker_address}')
-    logger.info(f'Input topic: {config.kafka_input_topic}')
-   
+    logger.info(f'Connected to input topic at {config.kafka_input_topic}')
+    logger.info(f'Connected to Hopsworks project at {config.project_name}')
+    logger.info(f'Connected to Hopsworks feature store at {config.feature_group_form_4_basic}')
+
     while not is_finished:
         
         is_finished, data = topic.consume_data(
@@ -43,7 +42,7 @@ if __name__ == "__main__":
                 )
             # If Hopsworks is not connected, save the data to a CSV file
             else:
-                pd.to_csv(data, config.file_path, mode='a', header=False, index=False)
+                data.to_csv(config.csv_path, mode='a', header=False, index=False)
 
         else:
             logger.info('No more messages to consume. Exiting kafka-to-store...')

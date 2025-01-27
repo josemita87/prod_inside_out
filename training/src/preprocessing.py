@@ -18,6 +18,4 @@ def load_and_preprocess_data(file_path: str) -> pd.DataFrame:
     # Drop categorical data
     columns_to_drop = ['ticker', 'company_cik', 'key', 'timestamp', 'date', 'coding', 'price']
     data.drop(columns=columns_to_drop, inplace=True)
-
-    logger.info(f"Data loaded and processed with shape: {data.shape}")
     return data

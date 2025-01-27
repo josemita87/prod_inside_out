@@ -1,9 +1,10 @@
 from loguru import logger
+from config import config
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def plot_predictions(y_test, y_pred_reg, financial_results, capital_invested):
     """Plot actual vs predicted negative returns and financial results."""
-    import matplotlib.pyplot as plt
-    import seaborn as sns
 
     plt.figure(figsize=(10, 6))
     sns.scatterplot(x=y_test, y=y_pred_reg)
@@ -19,13 +20,12 @@ def plot_predictions(y_test, y_pred_reg, financial_results, capital_invested):
     plt.figtext(0.99, 0.10, f"Capital Invested: ${capital_invested:.2f}", ha='right', fontsize=12, color='green')
     
     # Save plot
-    plt.savefig('/app/src/plots/plot_1.png')
+    plt.savefig(config.plot_path, dpi=300)
     plt.close()
-    logger.info("Plot saved as /app/src/plots/plot_1.png")
+    logger.info(f"Plot saved as {config.plot_path}")
 
-def run_simulation(real_returns, y_pred_negative, investment=100, threshold=-0.25):
+def run_simulation(real_returns, y_pred_negative, investment=100, threshold=-0.3):
     """Run a simulation based on the model's predictions."""
-    
     
     # Simulate the investment
     gains = 0
@@ -35,6 +35,5 @@ def run_simulation(real_returns, y_pred_negative, investment=100, threshold=-0.2
         if predicted_change <= threshold:  
             gains += ((-investment) * real_returns.iloc[i])  # Use the actual pct_change (not predicted) to update capital
             capital_invested += investment  # Update capital invested
-            logger.debug(gains)
             
     return capital_invested, gains, real_returns, y_pred_negative

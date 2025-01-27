@@ -4,40 +4,48 @@ from loguru import logger
 import numpy as np
 from numba import jit
 
-
-
-       
 def data_aggregation(transactions: pd.DataFrame, agg_dict: dict) -> pd.DataFrame:
+    """
+    Aggregate transaction data based on the provided aggregation dictionary.
+
+    Args:
+        transactions (pd.DataFrame): DataFrame containing transaction data.
+        agg_dict (dict): Dictionary specifying the aggregation operations.
+
+    Returns:
+        pd.DataFrame: Aggregated transaction data.
+    """
     # Filter out columns that are not present in the transactions DataFrame
     valid_agg_dict = {k: v for k, v in agg_dict.items() if k in transactions.columns}
     return transactions.groupby(['ticker', 'date'], as_index=False).agg(valid_agg_dict)
 
+def compute_target(transactions: pd.DataFrame, prices: pd.DataFrame, period: int) -> pd.DataFrame:
+    """
+    Compute the target prices and percentage changes for transactions.
 
-def compute_target(
-    transactions:pd.DataFrame, 
-    prices:pd.DataFrame, 
-    period: int) -> pd.DataFrame:
-       
+    Args:
+        transactions (pd.DataFrame): DataFrame containing transaction data.
+        prices (pd.DataFrame): DataFrame containing price data.
+        period (int): Period for computing the target prices.
+
+    Returns:
+        pd.DataFrame: DataFrame with computed target prices and percentage changes.
+    """
     # 0. Homogenize the date format
-    transactions['date'] = pd.to_datetime(
-        transactions['date'])
-    
-    prices['date'] = pd.to_datetime(
-        prices['date'] 
-    )
+    transactions['date'] = pd.to_datetime(transactions['date']).dt.tz_localize('UTC')
+    prices['date'] = pd.to_datetime(prices['date']).dt.tz_localize('UTC')
 
     # 1. Sort both dataframes by date
     transactions.sort_values(['date'], inplace=True)
     prices.sort_values(['date'], inplace=True)
 
-    # Check if the data is sorted correctly
-    assert transactions['date'].is_monotonic_increasing, "Txs dates not sorted"
-    assert prices['date'].is_monotonic_increasing, "Prices dates not sorted"
+    assert transactions['date'].is_monotonic_increasing, "Transaction dates not sorted"
+    assert prices['date'].is_monotonic_increasing, "Price dates not sorted"
     
     # 2. Backward merge_asof to get the start price
     start_state = pd.merge_asof(
-        transactions,
-        prices,
+        left=transactions,
+        right=prices,
         on='date',
         by='ticker',
         direction='backward'
@@ -48,57 +56,52 @@ def compute_target(
     start_state['future_date'] = start_state['date'] + pd.to_timedelta(period, unit='D')
     start_state = start_state[start_state['future_date'] <= latest_date]
 
-    #Homogenize the date format
-    transactions['date'] = transactions['date'].astype('datetime64[ns, UTC]')
-    prices['date'] = prices['date'].astype('datetime64[ns, UTC]')
-
-
     # 4. Perform forward merge_asof to get the end price
     end_state = pd.merge_asof(
-        start_state,
-        prices,
+        left=start_state,
+        right=prices,
         left_on='future_date',
         right_on='date',
         by='ticker',
         direction='forward'
-    ).rename(columns={
-        'close': 'end_price', 
-        'date_x': 'date'})
+    ).rename(columns={'close': 'end_price', 'date_x': 'date'})
 
     # 5. Drop the future_date column
     end_state = end_state.drop(columns=['future_date'])
 
     # 6. Calculate % change
     end_state['pct_change'] = (
-        ((end_state['end_price'] - end_state['start_price']) / 
-                    end_state['start_price']).round(5)
+        ((end_state['end_price'] - end_state['start_price']) / end_state['start_price']).round(5)
     )
 
     # 7. Collapse price columns into one: this way we increase likelihood of having a price to work with
     end_state['price'] = np.where(
-        end_state['price']==0, 
+        end_state['price'] == 0, 
         end_state['start_price'], 
         end_state['price']
     )
 
     # 8. Convert the shares-related counts to USD value 
     end_state[['tx_value', 'remaining_value', 'direct_holding', 'indirect_holding']] = \
-        end_state[
-            ['shares', 'remaining_shares', 'direct_holding', 'indirect_holding']
-            ].mul(end_state['price'], axis=0)
-
+        end_state[['shares', 'remaining_shares', 'direct_holding', 'indirect_holding']].mul(end_state['price'], axis=0)
 
     # 9. Drop unnecessary columns 
-    end_state = end_state.drop(
-        columns=['start_price', 'end_price', 'remaining_shares', 'shares', 'date_y']
-    )
+    end_state = end_state.drop(columns=['start_price', 'end_price', 'remaining_shares', 'shares', 'date_y'])
 
     logger.debug(f"Target computation completed. Shape: {end_state.shape}")
     return end_state
 
-def compute_avg_target_price(
-        df: pd.DataFrame, timedelta:int) -> pd.DataFrame:
-        
+def compute_avg_target_price(df: pd.DataFrame, timedelta: int) -> pd.DataFrame:
+    """
+    Compute the average target price over a specified time period.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing transaction data.
+        timedelta (int): Time period for computing the average target price.
+
+    Returns:
+        pd.DataFrame: DataFrame with computed average target prices.
+    """
     # Sort the dataframe by ticker and date
     df.sort_values(['ticker', 'date'], inplace=True)
     # Constant period (days) covered (in milliseconds)
@@ -108,11 +111,10 @@ def compute_avg_target_price(
     df['avg_target_expanding'] = np.nan
 
     # Extract timestamps and pct_changes for easier access
-    timestamps = df['timestamp'].values
-    pct_changes = df['pct_change'].values
-    tickers = df['ticker'].values
+    timestamps = df['timestamp'].astype(np.int64).values  # Ensure timestamps are int64
+    pct_changes = df['pct_change'].astype(np.float64).values  # Ensure pct_changes are float64
+    tickers = df['ticker'].astype(str).values  # Ensure tickers are strings
     
-  
     # Numba JIT-compiled function for computing expanding averages
     #@jit(nopython=True, parallel=True)
     def expanding_average(tickers, timestamps, pct_changes, delta_ms):
@@ -149,7 +151,6 @@ def compute_avg_target_price(
     # Call the Numba-accelerated function
     df['avg_target_expanding'] = expanding_average(tickers, timestamps, pct_changes, delta_ms)
 
-    
     return df
 
 

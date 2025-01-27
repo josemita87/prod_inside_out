@@ -6,7 +6,7 @@ authors = ["josema <savetudrac@duck.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"  # Compatible range for hopsworks and hsfs
+python = ">=3.10,<3.12"  # Compatible range for hopsworks and hsfs
 loguru = "^0.7.2"
 pydantic-settings = "^2.6.1"
 pandas = "^2.1"
@@ -14,5 +14,6 @@ hopsworks = "^4.1.0"
 yfinance = "^0.2.49"
 pyarrow = "^18.1.0"
 confluent-kafka = "^2.7.0"
+tqdm = "^4.67.1"
 
 
