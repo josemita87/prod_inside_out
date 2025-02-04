@@ -11,10 +11,9 @@ import random
 
 
 class SECLinkMonitor:
-    def __init__(self, check_interval: int = 60):
+    def __init__(self, num_pages: int):
         self.url = "https://www.sec.gov/cgi-bin/browse-edgar?company=&CIK=&type=4&owner=include&count=100&action=getcurrent"
-        self.check_interval = check_interval
-        self.seen_links = set()
+        self.num_pages = num_pages  
         self.headers = {
             "User-Agent": "CompanyE InvestmentServices admin@companye.com",
             "Accept-Encoding": "gzip, deflate",
@@ -71,7 +70,7 @@ class SECLinkMonitor:
 
         return driver
 
-    def parse_unseen_links(self, wait_time: int = 10) -> set:
+    def parse_links(self, wait_time: int = 10) -> set:
         driver = self._configure_driver()
         # Open the webpage
         driver.get(self.url)
@@ -81,9 +80,8 @@ class SECLinkMonitor:
         wait = WebDriverWait(driver, wait_time)
         all_links = set()
 
-        
-        # Scrape and paginate through the results
-        while True:
+        # Scrape and paginate through num_pages pages
+        for _ in range(self.num_pages):
             try:
                 # Wait for .txt links to be present on the page before scraping
                 wait.until(
@@ -96,21 +94,13 @@ class SECLinkMonitor:
                 # Parse the page with BeautifulSoup
                 soup = BeautifulSoup(driver.page_source, "html.parser")
                 links = {
-                    a["href"]
+                    a["href"].replace("/Archives/", "") if a["href"].startswith("/Archives") else a["href"]
                     for a in soup.find_all("a", href=True)
                     if a["href"].endswith(".txt")
                 }
-                logger.debug(f"Found links: {links}")
+              
                 all_links.update(links)
-
-                # Check if any of the links have already been seen
-                for link in list(all_links):
-                    if link in self.seen_links:
-                        all_links.remove(link)
-                        logger.info(
-                            f"Link {link} has already been seen. Removing from new links."
-                        )
-
+                
                 # Look for the "Next 100" button and click it
                 next_button = wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//input[@value='Next 100']"))
@@ -121,22 +111,11 @@ class SECLinkMonitor:
             except Exception as e:
                 # Handle the case where the "Next" button is not found or another error occurs
                 logger.debug(f"Collected {len(all_links)} links. Exception: {e}")
-                break
+                return all_links
 
         # Clean up
         driver.quit()
         logger.debug(f"Returning links: {all_links}")
         return all_links
 
-    def monitor(self):
-        while True:
-            logger.debug("Checking for updates...")
-            new_links = self.parse_unseen_links()
-
-            if new_links:
-                self.seen_links.update(new_links)
-                logger.debug(f"New links found: {new_links}")
-                yield from new_links
-            else:
-                logger.debug("No new links found.")
-            time.sleep(self.check_interval)
+    

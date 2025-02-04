@@ -32,7 +32,7 @@ class Form4Parser:
             return ET.fromstring(re.search(self.XML_DELIM, filing, re.DOTALL).group(1))
         
         except Exception as e:
-            logger.error(f"\n\nFailed to get filing: {e}, {self.url}\n\n")
+            #logger.error(f"\n\nFailed to get filing: {e}, {self.url}\n\n")
             return None
         
     def create_txs(self) -> list[dict]:

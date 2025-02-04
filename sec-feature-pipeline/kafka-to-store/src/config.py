@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
-from typing import List, Literal, Optional, ClassVar, Dict
+from typing import ClassVar
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
 
@@ -28,7 +28,7 @@ class Config(BaseSettings):
     csv_path: str = Field(..., env='CSV_PATH')
 
     # Expected schema as a class-level constant
-    expected_schema: ClassVar[Dict[str, type]] = {
+    expected_schema: ClassVar[dict[str, type]] = {
         "key": str,
         "company_cik": str,
         "ticker": str,

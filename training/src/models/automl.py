@@ -68,7 +68,10 @@ class AutoML:
         
         # Set the regressor
         self.regressor = automl
-        logger.info("AutoML regressor trained successfully.")
+
+        # Save the best model
+        self.best_model = automl.leader
+
 
     def classify(self, data:h2o.frame) -> pd.DataFrame:
         """Classify the data using the trained classifier."""

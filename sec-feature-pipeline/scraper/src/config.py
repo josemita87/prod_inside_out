@@ -17,6 +17,9 @@ class Config(BaseSettings):
     poll_timeout:int = Field(..., env='POLL_TIMEOUT')
     delay: int = Field(..., env='DELAY')
     
+    # Modes
+    mode: str = Field(..., env='MODE')
+    days_back: int = Field(..., env='DAYS_BACK')
     
 config = Config()
 

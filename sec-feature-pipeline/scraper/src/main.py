@@ -6,6 +6,7 @@ from parser import Form4Parser
 import xxhash
 import json
 from confluent_kafka import TopicPartition
+import pandas as pd
 
 app = Application(
     broker_address=config.kafka_broker_address,
@@ -42,7 +43,18 @@ def consume_data(consumer) -> tuple[list[str], any]:
             return urls, consumer
         
         try:
-            url = json.loads(message.value().decode('utf-8'))['file_path']
+            # Decode the message
+            msg = json.loads(message.value().decode('utf-8'))
+
+            # Extract the URL and date
+            url = msg['file_path']
+            date = pd.to_datetime(msg['timestamp'], unit='ms') 
+
+            if config.mode == "live":
+                # Check if the filing is too old
+                if date < datetime.now() - pd.Timedelta(days=config.days_back):
+                    continue
+
             #Store the URL and its offset
             urls.append((url, message.offset()))
             

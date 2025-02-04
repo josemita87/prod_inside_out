@@ -10,6 +10,15 @@ build-scraper:
 build-enricher:
 	docker build -t api-enricher ../sec-feature-pipeline/api-enricher
 
+# Build the feature Docker image
+build-feature:
+	docker build -t feature ../sec-feature-pipeline/kafka-to-store
+
+# Build the inference Docker image
+build-inference: 
+	docker build -t inference .
+
+
 # Stop and remove any existing master container
 stop-master:
 	-docker rm -f master || true
@@ -21,6 +30,14 @@ stop-scraper:
 # Stop and remove any existing enricher container
 stop-enricher:
 	-docker rm -f api-enricher || true
+
+# Stop and remove any existing feature container
+stop-feature:
+	-docker rm -f feature || true
+
+stop-inference:
+	-docker rm -f inference || true
+
 
 # Run the master Docker container
 run-infer-master: stop-master build-master
@@ -42,9 +59,16 @@ run-infer-enricher: stop-enricher build-enricher
 		--env-file .env-inference-enricher.env \
 		--name api-enricher api-enricher
 
-
+run-infer-feature: stop-feature build-feature
+	docker run \
+		-it --network redpanda-network \
+		--env-file .env-inference-feature.env \
+		--name feature feature
  
-#configure the enricher microservice
-#Call the prices microservice to update all prices
-#Call the target microservice to upate last features
-#Prepare inference pipeline using the trained model 
+ 
+run-infer-predict: stop-inference build-inference
+	docker run \
+		-it --network redpanda-network \
+		--env-file .env \
+		--env-file .credentials.env \
+		--name inference inference

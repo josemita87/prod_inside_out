@@ -45,9 +45,5 @@ class Config(BaseSettings):
         default=["date", "close", "ticker"],
         json_schema_extra={'env': 'PRICES_HEADERS'}
     )
-    class Config:
-        # Specify only the main .env file here for Pydantic’s internal use
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 config = Config()

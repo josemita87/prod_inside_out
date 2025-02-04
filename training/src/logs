@@ -55,3 +55,57 @@
 2025-01-26T13:13:52.586598+0000 INFO Plotted predictions and financial results
 2025-01-26T13:13:52.627325+0000 INFO Model saved at: /app/src/models
 2025-01-26T13:13:52.627479+0000 INFO Training process completed
+2025-02-04T11:00:38.512725+0000 INFO Starting the training process
+2025-02-04T11:00:41.953921+0000 INFO Initialized AutoML model
+2025-02-04T11:00:42.180498+0000 INFO Loaded and preprocessed data
+2025-02-04T11:05:49.631142+0000 INFO Starting the training process
+2025-02-04T11:05:52.843109+0000 INFO Initialized AutoML model
+2025-02-04T11:05:53.061146+0000 INFO Loaded and preprocessed data
+2025-02-04T11:08:17.828091+0000 INFO Starting the training process
+2025-02-04T11:08:21.043120+0000 INFO Initialized AutoML model
+2025-02-04T11:08:21.235478+0000 INFO Loaded and preprocessed data
+2025-02-04T11:10:46.141712+0000 INFO Starting the training process
+2025-02-04T11:10:49.359783+0000 INFO Initialized AutoML model
+2025-02-04T11:10:49.554791+0000 INFO Loaded and preprocessed data
+2025-02-04T11:23:05.017151+0000 INFO Starting the training process
+2025-02-04T11:23:08.222817+0000 INFO Initialized AutoML model
+2025-02-04T11:23:08.414849+0000 INFO Loaded and preprocessed data
+2025-02-04T11:23:35.658306+0000 INFO Starting the training process
+2025-02-04T11:23:38.866350+0000 INFO Initialized AutoML model
+2025-02-04T11:23:39.053651+0000 INFO Loaded and preprocessed data
+2025-02-04T11:27:26.677340+0000 INFO Starting the training process
+2025-02-04T11:27:29.886225+0000 INFO Initialized AutoML model
+2025-02-04T11:27:30.073174+0000 INFO Loaded and preprocessed data
+2025-02-04T11:29:29.034698+0000 INFO Starting the training process
+2025-02-04T11:29:32.254329+0000 INFO Initialized AutoML model
+2025-02-04T11:29:32.438572+0000 INFO Loaded and preprocessed data
+2025-02-04T11:29:32.503129+0000 DEBUG Scaled features:    num__direct_holding  num__indirect_holding  ...  cat__derivative_True  cat__ownership_True
+0            -0.013435              -0.025945  ...                   0.0                  1.0
+1            -0.013435              -0.025945  ...                   0.0                  1.0
+2            -0.013435              -0.025945  ...                   0.0                  1.0
+3            -0.013435              -0.025945  ...                   1.0                  1.0
+4            -0.013435              -0.025945  ...                   0.0                  1.0
+
+[5 rows x 13 columns]
+2025-02-04T11:31:06.550864+0000 INFO Starting the training process
+2025-02-04T11:31:09.770246+0000 INFO Initialized AutoML model
+2025-02-04T11:31:09.951067+0000 INFO Loaded and preprocessed data
+2025-02-04T11:31:10.017597+0000 DEBUG Scaled features:    num__direct_holding  num__indirect_holding  ...  cat__derivative_True  cat__ownership_True
+0            -0.013435              -0.025945  ...                   0.0                  1.0
+1            -0.013435              -0.025945  ...                   0.0                  1.0
+2            -0.013435              -0.025945  ...                   0.0                  1.0
+3            -0.013435              -0.025945  ...                   1.0                  1.0
+4            -0.013435              -0.025945  ...                   0.0                  1.0
+
+[5 rows x 13 columns]
+2025-02-04T11:31:10.024302+0000 INFO Split data into train and test sets
+2025-02-04T11:31:12.182683+0000 INFO Converted data to H2OFrame
+2025-02-04T11:31:12.183019+0000 INFO Training AutoML regressor...
+2025-02-04T11:33:13.717566+0000 INFO Trained regressor using AutoML
+2025-02-04T11:33:14.189106+0000 INFO Generated predictions using AutoML
+2025-02-04T11:33:14.235168+0000 INFO Ran financial simulation
+2025-02-04T11:33:14.235885+0000 INFO MAE for negative returns: 0.1075
+2025-02-04T11:33:14.420199+0000 INFO Plot saved as /app/src/plots/plot.png
+2025-02-04T11:33:14.420354+0000 INFO Plotted predictions and financial results
+2025-02-04T11:33:14.466383+0000 INFO Model saved at: /app/src/models
+2025-02-04T11:33:14.466563+0000 INFO Training process completed
