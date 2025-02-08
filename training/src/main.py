@@ -11,58 +11,90 @@ import os
 from config import config
 
 # Configure structured logging
-logger.add(config.log_path, format="{time} {level} {message}", level="DEBUG", rotation="10 MB")
+logger.add(
+    config.log_path, format="{time} {level} {message}", 
+    level="DEBUG", 
+    rotation="10 MB"
+)
 
 def main():
     logger.info("Starting the training process")
 
-    # Initialize AutoML model (init method initializes H2O cluster)
-    automl_model = AutoML(max_runtime_secs=config.max_runtime_secs)
+    # Initialize AutoML model 
+    automl_model = AutoML(
+        max_runtime_secs=config.max_runtime_secs, 
+        ratio=config.train_test_ratio
+    )
     logger.info("Initialized AutoML model")
 
     # Load and preprocess data
-    data: pd.DataFrame = load_and_preprocess_data(config.data_source_path)
+    data: pd.DataFrame = load_and_preprocess_data(
+        file_path=config.data_source_path,
+        columns_to_drop=config.columns_to_drop
+    )
+
+    logger.info(f"Data with shape: {data.shape}")
     logger.info("Loaded and preprocessed data")
 
     # Define features and target
-    X = data.drop(columns=['pct_change'])
-    y = data['pct_change']
+    X = data.drop(columns=[config.target_feature])
+    y = data[config.target_feature]
 
+    # Define which columns the model should use for training
+    features = [
+        col for col in X.columns.tolist() \
+            if col not in config.identification_features
+    ]
     # Scale training features
-    X_scaled: pd.DataFrame = scale_features(X)
+    X_scaled: pd.DataFrame = scale_features(
+        data=X, 
+        features_to_scale=features
+    )
     logger.debug(f"Scaled features: {X_scaled.head()}")
 
     # Split the data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, 
+        y, 
+        test_size=config.train_test_ratio, 
+        random_state=config.random_state
+    )
     logger.info("Split data into train and test sets")
 
     # Initialize H2O and convert to H2OFrame
-    train_data = h2o.H2OFrame(pd.concat([X_train, y_train], axis=1))
+    train_data = h2o.H2OFrame(
+        pd.concat([X_train, y_train], axis=1)
+    )
     test_data = h2o.H2OFrame(X_test)
     logger.info("Converted data to H2OFrame")
 
-    # Define the target and features for H2O AutoML
-    target_regressor = 'pct_change'
-    features = X_train.columns.tolist()
 
     # Train regressor using AutoML
-    automl_model.train_regressor(train_data, target=target_regressor, features=features)
+    automl_model.train_regressor(
+        train_data, 
+        target=TARGET_FEATURE, 
+        features=features
+    )
     logger.info("Trained regressor using AutoML")
 
     # Run predictions on the test data using AutoML
-    predictions: pd.DataFrame = automl_model.predict_shorts(test_data).set_index(X_test.index)
+    predictions: pd.DataFrame = automl_model.predict_shorts(
+        data = test_data
+    ).set_index(X_test.index)
     logger.info("Generated predictions using AutoML")
-
+    logger.info(f"Number of predictions: {test_data.shape[0]}")
     # Set index of predictions to match y_test
     y_pred = predictions['predict']
 
     # Extract predicted negative returns
     y_pred_negative = y_pred[y_pred < 0]
 
-    # Find common index between predicted negative returns and returns (y_test)
-    common_index = y_pred_negative.index.intersection(y_test.index)
+    # Common index of predicted negative returns and returns (y_test)
+    common_index = y_pred_negative.index.intersection(
+        y_test.index
+    )
 
-    # Align y_negative with y_pred_negative based on the common index
+    # Align based on the common index
     real_returns = y_test.loc[common_index]
 
     # Run the financial simulation
@@ -75,11 +107,20 @@ def main():
     logger.info("Ran financial simulation")
 
     # Evaluate performance on negative returns
-    mae_negative = mean_absolute_error(y_negative, y_pred_negative)
-    logger.info(f"MAE for negative returns: {mae_negative:.4f}")
+    mae_negative = mean_absolute_error(
+        y_negative, y_pred_negative
+    )
+    logger.info(
+        f"MAE for negative returns: {mae_negative:.4f}"
+        )
 
-    # Plot actual vs predicted negative returns and financial result
-    plot_predictions(y_negative, y_pred_negative, final_capital, capital_invested)
+    # Plot actual vs predicted negative returns 
+    plot_predictions(
+        y_negative, 
+        y_pred_negative, 
+        final_capital, 
+        capital_invested
+    )
     logger.info("Plotted predictions and financial results")
     
     # Save the best model

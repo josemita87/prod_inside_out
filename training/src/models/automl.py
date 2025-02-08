@@ -9,22 +9,24 @@ class AutoML:
         self, 
         max_runtime_secs:int=10, 
         seed:int=1,
-        ratio:float=0.8,
+        ratio:float=0.95,
         ):
         self.max_runtime_secs = max_runtime_secs
         self.seed = seed
         self.ratio=ratio
-
-        self.classifier = None
-        self.regressor = None
-
+        
         # Initialize H2O cluster
         h2o.init()
+
+        # Initialize H2O AutoML
+        self.automl = H2OAutoML(
+            max_runtime_secs=self.max_runtime_secs, 
+            seed=self.seed
+        )
 
         # Initialize best model attribute
         self.best_model = None
 
-        
     def train_classifier(
         self, 
         data:h2o.frame, 
@@ -33,15 +35,12 @@ class AutoML:
         ):
         """Train an AutoML classifier using H2O on training data."""
         logger.info("Training AutoML classifier...")
-
-        # Split the data into training and test sets
-        train, test = data.split_frame(ratios=[self.ratio], seed=self.seed)
         
         # Initialize H2O AutoML
         automl = H2OAutoML(max_runtime_secs=self.max_runtime_secs, seed=self.seed)
         
         # Train the model
-        automl.train(x=features, y=target, training_frame=train)
+        automl.train(x=features, y=target, training_frame=data)
         
         # Set the classifier
         self.classifier = automl
@@ -57,20 +56,15 @@ class AutoML:
         """Train an AutoML regressor using H2O."""
         logger.info("Training AutoML regressor...")
         
-        # Split the data into training and test sets
-        train, test = data.split_frame(ratios=[self.ratio], seed=self.seed)
-        
-        # Initialize H2O AutoML
-        automl = H2OAutoML(max_runtime_secs=self.max_runtime_secs, seed=self.seed)
-        
         # Train the model
-        automl.train(x=features, y=target, training_frame=train)
-        
-        # Set the regressor
-        self.regressor = automl
+        self.automl.train(
+            x=features, 
+            y=target, 
+            training_frame=data
+        )
 
         # Save the best model
-        self.best_model = automl.leader
+        self.best_model = self.automl.leader
 
 
     def classify(self, data:h2o.frame) -> pd.DataFrame:
@@ -86,12 +80,11 @@ class AutoML:
 
     def predict_shorts(self, data:h2o.frame) -> pd.DataFrame:
         """Predict the magnitude of negative returns using the trained regressor."""
-        if self.regressor is None:
+        if self.best_model is None:
             raise ValueError("Regressor has not been trained.")
 
         # Make predictions
-        predictions = self.regressor.predict(data)
-        
+        predictions = self.best_model.predict(data)
         
         # Return predictions as a pandas DataFrame
         return predictions.as_data_frame()

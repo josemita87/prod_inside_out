@@ -22,9 +22,12 @@ class Config(BaseSettings):
     hopsworks_api_key: str = Field(..., json_schema_extra={'HOPSWORKS_API_KEY'})
     csv_path: str = Field(..., json_schema_extra={'env': 'CSV_PATH'})
 
+    # Feature Selection 
+    columns_to_drop:list = Field(default=['key', 'timestamp', 'coding'])
+    identification_features: list = Field(default=['ticker', 'date', 'company_cik', 'price'])
+    target_feature: str = Field(..., json_schema_extra='TARGET_FEATURE')
     # Trading settings
     qty: str = Field(..., json_schema_extra={'env': 'QTY'})
-    symbol: str = Field(..., json_schema_extra={'env': 'SYMBOL'})
     side: str = Field("sell", json_schema_extra={'env': 'SIDE'})
     order_type: str = Field("market", json_schema_extra={'env': 'ORDER_TYPE'})
     time_in_force: str = Field("gtc", json_schema_extra={'env': 'TIME_IN_FORCE'})

@@ -22,9 +22,17 @@ class Config(BaseSettings):
 
     # Training settings
     max_runtime_secs: int = Field(..., json_schema_extra={'env': 'MAX_RUNTIME_SECS'})
+    train_test_ratio: float = Field(..., json_schema_extra={'env': 'TRAIN_TEST_RATIO'})
+    random_state: int = Field(..., json_schema_extra={'env': 'RANDOM_STATE'})
+
+    # Feature Selection
+    target_feature: str = Field(..., json_schema_extra={'env': 'TARGET_FEATURE'})
+    columns_to_drop:list = Field(default=['key', 'timestamp', 'coding', 'insider_cik'])
+    identification_features: list = Field(default=['ticker','insider_name', 'date', 'company_cik', 'price'])
+    
     class Config:
         # Specify only the main .env file here for Pydantic’s internal use
         env_file = ".env"
         env_file_encoding = "utf-8"
-
+    
 config = Config()

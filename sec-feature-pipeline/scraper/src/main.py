@@ -53,6 +53,7 @@ def consume_data(consumer) -> tuple[list[str], any]:
             if config.mode == "live":
                 # Check if the filing is too old
                 if date < datetime.now() - pd.Timedelta(days=config.days_back):
+                    logger.info(f'Filing too old: {date}')
                     continue
 
             #Store the URL and its offset
