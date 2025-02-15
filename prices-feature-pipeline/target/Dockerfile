@@ -20,6 +20,7 @@ COPY pyproject.toml poetry.lock /app/
 # Install dependencies
 RUN poetry install --no-interaction --no-ansi --verbose
 
+RUN printenv
 
 # Copy the rest of the application code
 COPY . /app

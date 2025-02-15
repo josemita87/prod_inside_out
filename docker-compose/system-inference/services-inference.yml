@@ -1,0 +1,108 @@
+name: inference-feature-pipeline
+
+networks:
+  redpanda-network:
+    name: redpanda-network
+    driver: bridge
+
+# Yaml anchor for shared variables
+x-shared-environment: &shared-env
+  SHARED_ENV_VAR1: value1
+
+services:
+  master-index:
+    build:
+      context: ../../sec-feature-pipeline/master-index
+    networks:
+      - redpanda-network
+    env_file:
+      - inference-master.env
+    environment:
+      <<: *shared-env
+    ports:
+      - "8000:8000"
+    restart:
+      "on-failure:5"
+    profiles:
+      - sec
+
+  scraper:
+    build:
+      context: ../../sec-feature-pipeline/scraper
+    networks:
+      - redpanda-network
+    env_file:
+      - inference-scraper.env
+    environment:
+      <<: *shared-env
+    ports:
+      - "8001:8001"
+    restart:
+      "on-failure:5"
+    depends_on:
+       - master-index
+    profiles:
+      - sec
+ 
+
+  kafka-to-store:
+    build:
+      context: ../../sec-feature-pipeline/kafka-to-store
+    networks:
+      - redpanda-network
+    env_file:
+      - .credentials.env
+      - inference-feature.env
+      - .env
+    environment:
+      <<: *shared-env
+    ports:
+      - "8002:8002"
+    restart:
+      "on-failure:5"
+    #depends_on:
+      #- scraper
+    profiles:
+      - sec
+    volumes:
+      - ${BASE_PATH}/docker-compose/shared_modules/feature_store.py:/app/src/feature_store.py
+
+  yahoo-connect:
+    build:
+      context: ../../prices-feature-pipeline/yahoo_connect
+    networks:
+      - redpanda-network
+    env_file:
+      - inference-yahoo.env
+      - .credentials.env
+    environment:
+      <<: *shared-env
+    ports:
+      - "8003:8003"
+    restart:
+      "on-failure:5"
+    profiles:
+      - prices
+    volumes:
+      - ${BASE_PATH}/docker-compose/shared_modules/feature_store.py:/app/src/feature_store.py
+
+  target:
+    build:
+      context: ../../prices-feature-pipeline/target
+    networks:
+      - redpanda-network
+    env_file:
+      - inference-target.env
+      - .credentials.env
+    environment:
+      <<: *shared-env
+    ports:
+      - "8005:8005"
+    restart:
+      "on-failure:5"
+    depends_on:
+      - yahoo-connect
+    profiles:
+      - prices
+    volumes:
+      - ${BASE_PATH}/docker-compose/shared_modules/feature_store.py:/app/src/feature_store.py

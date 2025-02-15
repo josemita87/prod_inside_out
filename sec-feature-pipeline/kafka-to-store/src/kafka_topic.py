@@ -32,13 +32,11 @@ class Connection:
             consumer.subscribe(topics=[self.input_topic.name])
 
             while True:
-                
                 message = consumer.poll(timeout)
                 if not message:
                     return True, pd.DataFrame(buffer)
             
                 if message:
-        
                     updated_values = json.loads(message.value().decode('utf-8'))
                     if 'date' in updated_values:
                         updated_values['date'] = datetime.strptime(updated_values['date'][:10], '%Y-%m-%d')

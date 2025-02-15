@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from typing import Literal
 
 class Config(BaseSettings):
 
@@ -10,16 +11,19 @@ class Config(BaseSettings):
     auto_offset_reset: str = Field(..., env='AUTO_OFFSET_RESET')
     consumer_group: str = Field(..., env='CONSUMER_GROUP')
 
-    test_size: int = Field(..., env='TEST_SIZE')
-    test_trial:str = Field(..., env='TEST_TRIAL')
+    # System Settings
     buffer_size: int = Field(..., env='BUFFER_SIZE')
     sleep_time: float = Field(..., env='SLEEP_TIME')
     poll_timeout:int = Field(..., env='POLL_TIMEOUT')
     delay: int = Field(..., env='DELAY')
-    
-    # Modes
-    mode: str = Field(..., env='MODE')
-    days_back: int = Field(..., env='DAYS_BACK')
+    mode: Literal['historical', 'live', 'last_quarter'] = Field(..., env='MODE')
+
+    # Training Settings
+    test_size: int = Field(400, env='TEST_SIZE')
+    test_trial:str = Field("False", env='TEST_TRIAL')
+
+    # Inference Settings
+    days_back: int = Field(1, env='DAYS_BACK')
     
 config = Config()
 

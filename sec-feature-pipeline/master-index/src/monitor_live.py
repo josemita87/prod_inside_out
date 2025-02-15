@@ -115,7 +115,6 @@ class SECLinkMonitor:
 
         # Clean up
         driver.quit()
-        logger.debug(f"Returning links: {all_links}")
         return all_links
 
     

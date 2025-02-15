@@ -1,0 +1,23 @@
+{
+    "hopsworks": {
+        "bt4": "Basic Training Transactions",
+        "rt4": "Return Training Transactions",
+        "bi4": "Basic Inference Transactions",
+        "bir4": "Return Inference Transactions",
+        "p": "Prices"
+    },
+    "red_panda": {
+        "topics": {
+            "tmi": "Training Master Index",
+            "imi": "Inference Master Index",
+            "td": "Training Dictionaries",
+            "id": "Inference Dictionaries"
+        },
+        "consumers": {
+            "tmi": "Training Master Index",
+            "imi": "Inference Master Index",
+            "td": "Training Dictionaries",
+            "id": "Inference Dictionaries"
+        }
+    }
+}

@@ -9,30 +9,16 @@ class Config(BaseSettings):
     kafka_broker_address: str = Field(..., env='KAFKA_BROKER_ADDRESS') 
     kafka_output_topic: str = Field(..., env='KAFKA_OUTPUT_TOPIC')
 
-    # Time Settings
-    years: int = Field(None, env='YEARS') 
-    mode: Literal['historical', 'live', 'last_quarter'] = Field('historical', env='MODE')
+    # System Settings
+    buffer_size: int = Field(..., env='BUFFER_SIZE')
+    mode: Literal['historical', 'live', 'last_quarter'] = Field(..., env='MODE')
     
-    # Buffer Settings
-    buffer_size: int = Field(1000, env='BUFFER_SIZE')
-    form_type: str = Field(None, env='FORM_TYPE') 
-
-    #Live Settings
-    num_pages: int = Field(..., env='NUM_PAGES')
-    live_iterations: int = Field(..., env='LIVE_ITERATIONS')
-    secs_between_iterations: int = Field(..., env='SECS_BETWEEN_ITERATIONS')
+    # Training Settings
+    years: int = Field(5, env='YEARS') 
     
-    @field_validator('form_type')
-    def validate_form_type(cls, v):
-        if v not in ['4', '13F-HR']:
-            raise ValueError('form_type must be either 4 or 13F-HR')
-        return v
+    # Inference Settings
+    num_pages: int = Field(1, env='NUM_PAGES')
+    live_iterations: int = Field(1, env='LIVE_ITERATIONS')
+    secs_between_iterations: int = Field(10, env='SECS_BETWEEN_ITERATIONS')
     
 config = Config()
-
-
-# Dev settings
-kafka_broker_address: str = 'localhost:19092'
-kafka_output_topic: str = 'form_4_dictionary'
-years: Optional[int] = 5 
-form_type: Optional[str] = '4'

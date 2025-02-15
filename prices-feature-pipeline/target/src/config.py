@@ -1,28 +1,15 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-
-from dotenv import load_dotenv  
-
-load_dotenv(".env")
-load_dotenv(".credentials.env")
-
 class Config(BaseSettings):
-
+    """Configuration settings for the target microservice."""
+    
     # Hopsworks settings
     project_name: str = Field(..., json_schema_extra={'env': 'PROJECT_NAME'})
-    api_key: str = Field(..., json_schema_extra={'env': 'API_KEY'})
-    feature_group_prices: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_PRICES'})
-    feature_group_form4_basic: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_FORM4_BASIC'})
-    feature_group_target: str = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_TARGET'})
+    hopsworks_api_key: str = Field(..., json_schema_extra={'env': 'HOPSWORKS_API_KEY'})
     feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
     event_time: str = Field(..., json_schema_extra={'env': 'EVENT_TIME'})
 
-    # CSV settings
-    hopsworks_connect: bool = Field(..., json_schema_extra={'env': 'HOPSWORKS_CONNECT'})
-    csv_path_prices: str = Field(..., json_schema_extra={'env': 'CSV_PATH_PRICES'})
-    csv_path_form4: str = Field(..., json_schema_extra={'env': 'CSV_PATH_FORM4'})
-    csv_path_final: str = Field(..., json_schema_extra={'env': 'CSV_PATH_FINAL'})
     headers: list = Field(
         default=[
             "company_cik", "ticker", "insider_cik", "insider_name", "owner_code",
@@ -37,43 +24,35 @@ class Config(BaseSettings):
         json_schema_extra={'env': 'PRICES_HEADERS'}
     )
 
-    #Investment settings
+    # Investment settings
     delta_period: int = Field(..., json_schema_extra={'env': 'DELTA_PERIOD'})
-    filter_key: str = Field(..., json_schema_extra={'env':'FILTER_KEY'})
+    filter_key: str = Field(..., json_schema_extra={'env': 'FILTER_KEY'})
     acquired_disposed: str = Field(..., json_schema_extra={'env': 'ACQUIRED_DISPOSED'})
 
-    #Aggregation
-    agg_dict:dict = Field({
-        # 'first' method aggregation
+    # Aggregation settings
+    agg_dict: dict = Field({
         'company_cik': 'first',
         'key': 'first',
         'timestamp': 'first',
-        #'insider_cik': 'first',
-        #'insider_name': 'first',
-        #'acquired_disposed': 'first',
         'date': 'first',
         'market_cap': 'first',
-        
-        # 'sum' method aggregation
         'shares': 'sum',
         'remaining_shares': 'sum',
         'direct_holding': 'sum',
         'indirect_holding': 'sum',
-        
-        # 'any' method aggregation (for boolean columns)
         'equity_swap': 'any',
         'rule105b1': 'any',
-        
-        # 'mode' method aggregation
         'derivative': lambda x: x.mode()[0],
         'owner_code': lambda x: x.mode()[0],
         'ownership': lambda x: x.mode()[0],
         'coding': lambda x: x.mode()[0],
-        
-        # 'mean' method aggregation
         'price': 'mean'
     })
 
+    # System settings
+    system_training: bool = Field(False, json_schema_extra={'env': 'SYSTEM_TRAINING'})
+    system_inference: bool = Field(False, json_schema_extra={'env': 'SYSTEM_INFERENCE'})
+    delay:int = Field(0, json_schema_extra={'env': 'DELAY'})
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

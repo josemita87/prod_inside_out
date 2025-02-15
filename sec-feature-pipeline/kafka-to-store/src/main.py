@@ -1,9 +1,9 @@
 from config import config
 import pandas as pd
-from src.feature_store import Connection, validate_and_reduce_mem_storage, data_cleaning
+from src import clean
 import src.kafka_topic as kafka_topic
+from src.feature_store import Connection
 from loguru import logger 
-
 
 
 if __name__ == "__main__":
@@ -11,10 +11,8 @@ if __name__ == "__main__":
     # Connect to the Kafka topic
     topic = kafka_topic.Connection()
 
-    if config.hopsworks_connect:
-        
-        # Connect to the feature store
-        feature_store = Connection()
+    # Connect to the feature store
+    feature_store = Connection()
 
     is_finished = False
 
@@ -22,7 +20,7 @@ if __name__ == "__main__":
     logger.info(f'Connected to Kafka broker at {config.kafka_broker_address}')
     logger.info(f'Connected to input topic at {config.kafka_input_topic}')
     logger.info(f'Connected to Hopsworks project at {config.project_name}')
-    logger.info(f'Connected to Hopsworks feature store at {config.feature_group_form_4_basic}')
+    logger.info(f'Connected to Hopsworks feature store at {"BI4" if config.system_inference else "BT4"}')
 
     while not is_finished:
         
@@ -32,22 +30,23 @@ if __name__ == "__main__":
         )
             
         if not data.empty:
-            data:pd.DataFrame = data_cleaning(data)
-            data:pd.DataFrame = validate_and_reduce_mem_storage(data)
+            data:pd.DataFrame = clean.data_cleaning(data)
+            data:pd.DataFrame = clean.validate_and_reduce_mem_storage(data)
             
-            if config.hopsworks_connect:
-                feature_store.push_data(
+            # Route to the correct feature group (inference / training)
+            if config.system_inference:
+                feature_store.push_BI4(
                     data, 
-                    schema = config.expected_schema
+                    #schema = config.expected_schema
                 )
-            # If Hopsworks is not connected, save the data to a CSV file
-            else:
-                data.to_csv(config.csv_path, mode='a', header=False, index=False)
+            
+            elif config.system_training:
+                feature_store.push_BT4(
+                    data, 
+                    #schema = config.expected_schema
+                )
 
         else:
             logger.info('No more messages to consume. Exiting kafka-to-store...')
             break
 
-    # Run the last materialization
-    logger.info('No more messages to consume. Exiting kafka-to-store...')
-    feature_store.last_materialization()

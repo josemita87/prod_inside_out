@@ -7,6 +7,7 @@ import xxhash
 import json
 from confluent_kafka import TopicPartition
 import pandas as pd
+import time
 
 app = Application(
     broker_address=config.kafka_broker_address,
@@ -151,7 +152,7 @@ def commit_offset(offset: int) -> None:
 
 if __name__ == '__main__':
 
-    #time.sleep(config.delay)
+    time.sleep(config.delay)
     consumer = app.get_consumer(auto_commit_enable=False)
     consumer.subscribe(topics = [input_topic.name])
 

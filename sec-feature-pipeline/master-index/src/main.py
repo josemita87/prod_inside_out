@@ -102,7 +102,7 @@ def produce_data(data: pd.DataFrame) -> None:
             producer.flush()
             
 
-def get_historic_data(form_type: str, years: int) -> None:
+def get_historic_data(years: int, form_type: str="4") -> None:
 
     for year in range(datetime.now().year - years, datetime.now().year + 1):
 
@@ -114,7 +114,7 @@ def get_historic_data(form_type: str, years: int) -> None:
                     produce_data(filings)
 
 
-def get_last_quarter_data(form_type: str) -> None:
+def get_last_quarter_data(form_type: str = "4") -> None:
     quarter = f'QTR{(datetime.now().month - 1) // 3 + 1}'
     df = fetch_parse_data(datetime.now().year, quarter)
     if isinstance(df, pd.DataFrame):
@@ -123,7 +123,7 @@ def get_last_quarter_data(form_type: str) -> None:
             produce_data(filings)
 
 
-def get_live_data(form_type: str) -> None:
+def get_live_data() -> None:
 
     # Instantiate the SECLinkMonitor
     monitor = SECLinkMonitor(
@@ -156,23 +156,22 @@ if __name__ == '__main__':
     logger.info(f'Connected to Kafka broker at {config.kafka_broker_address}')
     logger.info(f'Output topic: {config.kafka_output_topic}')
     logger.info(f'Buffer size: {config.buffer_size}')
-    logger.info(f'Form type: {config.form_type}')
     logger.info(f'Mode: {config.mode}')
 
 
     if config.mode == 'historical':
         logger.info(f'Years: {config.years}')
-        get_historic_data(config.form_type, config.years)
+        get_historic_data(config.years)
 
 
     elif config.mode == 'last_quarter':
-        get_last_quarter_data(config.form_type)
+        get_last_quarter_data()
         
     elif config.mode == 'live':
         logger.info(f'Number of pages: {config.num_pages}')
         logger.info(f'Live iterations: {config.live_iterations}')
         logger.info(f'Seconds between iterations: {config.secs_between_iterations}')
-        get_live_data(config.form_type)
+        get_live_data()
 
     else:
         logger.error('Invalid mode. Exiting...')

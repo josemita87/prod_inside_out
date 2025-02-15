@@ -1,14 +1,18 @@
 import h2o
 from h2o.automl import H2OAutoML
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
-from models.automl import AutoML  
-from preprocessing import load_and_preprocess_data, scale_features
-from simulation import run_simulation, plot_predictions
+import sklearn
+
 from loguru import logger
 import pandas as pd
 import os
+
+# Modules
+from feature_store import Connection
 from config import config
+import training.src.helper as helper
+import training.src.models.automl as models
+import training.src.simulation as simulation
+
 
 # Configure structured logging
 logger.add(
@@ -18,18 +22,20 @@ logger.add(
 )
 
 def main():
-    logger.info("Starting the training process")
+    # Connect to the feature store
+    feature_store = Connection()
+    logger.info("Connected to the feature store")
 
     # Initialize AutoML model 
-    automl_model = AutoML(
+    automl_model = models.AutoML(
         max_runtime_secs=config.max_runtime_secs, 
         ratio=config.train_test_ratio
     )
     logger.info("Initialized AutoML model")
 
     # Load and preprocess data
-    data: pd.DataFrame = load_and_preprocess_data(
-        file_path=config.data_source_path,
+    data: pd.DataFrame = helper.load_and_preprocess_data(
+        feature_store=feature_store,
         columns_to_drop=config.columns_to_drop
     )
 
@@ -46,14 +52,14 @@ def main():
             if col not in config.identification_features
     ]
     # Scale training features
-    X_scaled: pd.DataFrame = scale_features(
+    X_scaled: pd.DataFrame = helper.scale_features(
         data=X, 
         features_to_scale=features
     )
     logger.debug(f"Scaled features: {X_scaled.head()}")
 
     # Split the data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
         X_scaled, 
         y, 
         test_size=config.train_test_ratio, 
@@ -72,7 +78,7 @@ def main():
     # Train regressor using AutoML
     automl_model.train_regressor(
         train_data, 
-        target=TARGET_FEATURE, 
+        target=config.target_feature, 
         features=features
     )
     logger.info("Trained regressor using AutoML")
@@ -98,7 +104,7 @@ def main():
     real_returns = y_test.loc[common_index]
 
     # Run the financial simulation
-    capital_invested, final_capital, y_negative, y_pred_negative = run_simulation(
+    capital_invested, final_capital, y_negative, y_pred_negative = simulation.run_simulation(
         real_returns, 
         y_pred_negative, 
         threshold=0,
@@ -107,7 +113,7 @@ def main():
     logger.info("Ran financial simulation")
 
     # Evaluate performance on negative returns
-    mae_negative = mean_absolute_error(
+    mae_negative = sklearn.metrics.mean_absolute_error(
         y_negative, y_pred_negative
     )
     logger.info(
@@ -115,7 +121,7 @@ def main():
         )
 
     # Plot actual vs predicted negative returns 
-    plot_predictions(
+    simulation.plot_predictions(
         y_negative, 
         y_pred_negative, 
         final_capital, 

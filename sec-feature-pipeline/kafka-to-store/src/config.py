@@ -1,7 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
 from typing import ClassVar
-from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
 
 
@@ -14,19 +13,17 @@ class Config(BaseSettings):
     poll_timeout: int = Field(10, env='POLL_TIMEOUT')  
     consumer_group: str = Field(..., env='CONSUMER_GROUP')
     auto_offset_reset: str = Field(..., env='AUTO_OFFSET_RESET')
-    delay:int = Field(0, env='DELAY')  
     
     # Hopsworks settings
-    hopsworks_connect: bool = Field(..., env='HOPSWORKS_CONNECT')
     project_name: str = Field(..., env='PROJECT_NAME')
     hopsworks_api_key: str = Field(..., env='HOPSWORKS_API_KEY')
-    feature_group_form_4_basic: str = Field(..., env='FEATURE_GROUP_FORM_4_BASIC')
-    feature_group_version: int = Field(1, env='FEATURE_GROUP_VERSION')  # Default version is 1
-    materialization_batch_size: int = Field(1000, env='MATERIALIZATION_BATCH_SIZE')  # Default batch size is 1000
+    feature_group_version: int = Field(1, env='FEATURE_GROUP_VERSION')  
+  
+    # System Settings
+    system_training: bool = Field(False, json_schema_extra={'env': 'SYSTEM_TRAINING'})
+    system_inference: bool = Field(False, json_schema_extra={'env': 'SYSTEM_INFERENCE'})
+    delay:int = Field(0, env='DELAY')  
     
-    # CSV settings
-    csv_path: str = Field(..., env='CSV_PATH')
-
     # Expected schema as a class-level constant
     expected_schema: ClassVar[dict[str, type]] = {
         "key": str,
@@ -48,9 +45,6 @@ class Config(BaseSettings):
         "direct_holding": str,
         "indirect_holding": str,
     }
-    
-    #Training settings
-    api_drop: str = Field(..., env='API_DROP')
 
     class Config:
         pass

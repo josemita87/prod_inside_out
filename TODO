@@ -1,5 +1,6 @@
-erase duplicated  train test split in training
-keeping traceability of the inference predictions
+Debugged feature store microservice . Could not handle "-" in the feature group name
+Tested sec profile functionality and adjusted all env variables to match desired workings.
 
 
-TODO: aggregation of inferene pipeline
+TODO:
+handle target microservice feature store connections
