@@ -1,5 +1,7 @@
-# Use Python slim image
 FROM python:3.12-slim
+
+# Bring in the uv binary from the official image
+COPY --from=ghcr.io/astral-sh/uv:0.9.7 /uv /uvx /bin/
 
 # Install essential tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,17 +36,24 @@ ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_BIN=/usr/bin/chromedriver
 ENV DISPLAY=:99
 
-# Install Python build tools and dependencies
-RUN pip install --no-cache-dir poetry==1.8.3
+# Add src to the PYTHONPATH
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+# uv: compile bytecode and copy packages into the environment
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
 # Set working directory
 WORKDIR /app
 
-# Copy application files
+# Copy only the dependency manifests first to leverage layer caching
+COPY pyproject.toml uv.lock /app/
+
+# Install dependencies into the project environment
+RUN uv sync --frozen --no-dev
+
+# Copy the rest of the application code
 COPY . /app
 
-# Install dependencies using Poetry
-RUN poetry install --no-interaction --no-ansi --verbose
-
 # Default command
-CMD ["poetry", "run", "python", "src/main.py"]
+CMD ["uv", "run", "--no-sync", "python", "src/main.py"]

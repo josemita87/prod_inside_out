@@ -1,28 +1,31 @@
 FROM python:3.12-slim
 
-#Add src to the PYTHONPATH
-ENV PYTHONPATH=/app
+# Bring in the uv binary from the official image
+COPY --from=ghcr.io/astral-sh/uv:0.9.7 /uv /uvx /bin/
 
-ENV PYTHONBUFFERED=1
+# Add src to the PYTHONPATH
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+# uv: compile bytecode and copy packages into the environment
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     build-essential \
-    && pip install poetry==1.8.3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
 WORKDIR /app
 
-# Copy only the poetry files first to leverage caching
-COPY pyproject.toml poetry.lock /app/
+# Copy only the dependency manifests first to leverage layer caching
+COPY pyproject.toml uv.lock /app/
 
-# Install dependencies
-RUN poetry install --no-interaction --no-ansi --verbose
-
+# Install dependencies into the project environment
+RUN uv sync --frozen --no-dev
 
 # Copy the rest of the application code
 COPY . /app
 
 # Run the application
-CMD ["poetry", "run", "python", "src/main.py"]
+CMD ["uv", "run", "--no-sync", "python", "src/main.py"]

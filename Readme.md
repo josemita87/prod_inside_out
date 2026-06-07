@@ -59,7 +59,7 @@ Docker Compose (latest stable version)
 
 Python 3.8+
 
-Poetry (for dependency management)
+uv (for dependency management)
 
 Hopsworks API Key (for secure access to the feature store)
 

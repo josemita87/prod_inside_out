@@ -1,11 +1,16 @@
+"""Data cleaning and memory-reduction helpers for consumed transactions."""
+
 import pandas as pd
-import time
 
 
 def data_cleaning(data: list[dict]) -> pd.DataFrame:
-    """
-    Clean the data by replacing 'None' and '---' with NaN, 
-    dropping duplicates and removing rows with NaN values.
+    """Clean the consumed data by dropping duplicates and rows with NaN values.
+
+    Args:
+        data: List of transaction dictionaries to clean.
+
+    Returns:
+        A DataFrame with duplicate rows and rows containing NaN removed.
     """
     # Convert the list of dicts to a DataFrame
     data = pd.DataFrame(data)
@@ -19,17 +24,33 @@ def data_cleaning(data: list[dict]) -> pd.DataFrame:
     return data
 
 
-#Auxiliary function
+# Auxiliary function
 def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Reduce the memory usage of the DataFrame by downcasting the numeric columns.
-    Invalid rows for each conversion will be dropped.
+    """Reduce DataFrame memory usage by downcasting columns to efficient dtypes.
+
+    Categorical, boolean, numeric and datetime conversions are applied where the
+    relevant columns exist. Rows that fail a numeric or date conversion are dropped.
+
+    Args:
+        data: DataFrame of transactions to optimize.
+
+    Returns:
+        A DataFrame with columns cast to memory-efficient dtypes and invalid rows removed.
     """
     data['link'] = data['link'].astype('str')
 
     # Convert columns to categorical where appropriate
-    for col in ['company_cik', 'ticker', 'insider_cik', 'insider_name', 
-                'owner_code', 'exchange', 'acquired_disposed', 'coding', 'sic']:
+    for col in [
+        'company_cik',
+        'ticker',
+        'insider_cik',
+        'insider_name',
+        'owner_code',
+        'exchange',
+        'acquired_disposed',
+        'coding',
+        'sic',
+    ]:
         if col in data.columns:
             data[col] = data[col].astype('category')
 
@@ -37,7 +58,7 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
     for col in ['rule105b1', 'derivative', 'equity_swap', 'ownership']:
         if col in data.columns:
             data[col] = data[col].astype('bool')
-   
+
     # Convert numeric columns to more memory-efficient types
     numeric_columns = {
         'shares': 'int32',
@@ -58,5 +79,3 @@ def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
     data = data.dropna(subset=['date'])  # Drop rows where 'date' conversion failed
 
     return data
-
-

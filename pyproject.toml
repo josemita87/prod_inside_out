@@ -1,0 +1,137 @@
+[project]
+name = "inside-out"
+version = "0.1.0"
+description = "Repo-root dev tooling and shared lint/type/docstring configuration. Not a runtime package — each microservice has its own pyproject.toml and uv.lock for independent Docker builds."
+readme = "Readme.md"
+authors = [{ name = "Josep Cubedo Macian", email = "136491450+josemita87@users.noreply.github.com" }]
+requires-python = ">=3.10,<3.13"
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.10",
+    "mypy>=1.17.0,<2",
+    "pydoclint>=0.8.0,<1",
+    "docstring-parser-fork>=0.0.14",
+    "bandit>=1.8.6,<2",
+    "pydantic>=2.10.0",
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_return_any = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = false
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+enable_error_code = ["redundant-expr", "truthy-bool"]
+ignore_missing_imports = true
+exclude = [
+  "build",
+  "dist",
+  "\\.venv",
+  "\\.env",
+  "lab",
+]
+
+[tool.pydantic-mypy]
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.ruff]
+line-length = 120
+unsafe-fixes = false
+preview = false
+show-fixes = true
+target-version = "py310"
+exclude = ["lab"]
+
+[tool.ruff.lint]
+select = [
+  "D", "E", "F", "I", "B", "C4", "C90", "DTZ", "TCH", "ICN", "PIE", "SIM", "ARG",
+  "RUF", "N", "PL", "TID"
+]
+
+ignore = [
+  "E701",    # Allow single-line compound statements (e.g., if x: y)
+  "E702",    # Allow multiple statements on one line separated by semicolons
+  "B008",    # Do not perform function calls in argument defaults
+  "PLR0915", # Allow many statements per function
+  "D203",    # Incompatible with D211 (no-blank-line-before-class)
+  "D213",    # Incompatible with D212 (multi-line-summary-first-line)
+  "D107",    # Missing docstring in __init__ (documented at class level)
+  "PLR0913", # Allow many arguments in function definitions
+  "PLR0917", # Allow many positional arguments in function definitions
+  "RUF013",  # Implicit Optional — defer to explicit annotation pass
+  "N802",    # Feature-group accessors are domain contracts (fetch_BT4, push_BIR4, parse_and_produce_4Fs)
+  "N803",    # ML matrix argument convention (X, X_test, y_pred)
+  "N806",    # Feature-group / ML locals are domain vocabulary (BT4, RT4, BI4, BIR4, X_test)
+  "N812",    # Conventional import aliases (selenium expected_conditions as EC)
+  "N817",    # Conventional import aliases (xml ElementTree as ET)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "D104"]  # Allow re-export imports and missing package docstrings
+"**/config.py" = ["N805"]  # pydantic-settings validators take cls/values, not self
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+runtime-evaluated-base-classes = [
+  "pydantic.BaseModel",
+  "pydantic_settings.BaseSettings",
+]
+runtime-evaluated-decorators = [
+  "dataclasses.dataclass",
+  "pydantic.field_validator",
+  "pydantic.model_validator",
+]
+exempt-modules = ["pydantic", "pydantic_settings"]
+
+[tool.ruff.lint.flake8-import-conventions]
+aliases = { pandas = "pd", numpy = "np", "matplotlib.pyplot" = "plt" }
+
+[tool.ruff.lint.mccabe]
+max-complexity = 13
+
+[tool.ruff.format]
+quote-style = "single"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+
+[tool.pydoclint]
+style = "google"
+exclude = "\\.git|\\.venv|build|dist|lab"
+check-arg-order = true
+check-return-types = true
+check-yield-types = true
+skip-checking-short-docstrings = false
+skip-checking-raises = false
+allow-init-docstring = false
+require-return-section-when-returning-nothing = false
+check-class-attributes = false
+should-document-private-class-attributes = false
+treat-property-methods-as-class-attributes = true
+ignore-underscore-args = true
+ignore-private-args = false
+should-document-star-arguments = true
+check-style-mismatch = true
+check-arg-defaults = true
+
+[tool.bandit]
+exclude_dirs = ["build", "dist", "lab", ".venv"]
+skips = ["B101", "B601"]

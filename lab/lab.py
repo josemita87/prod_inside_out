@@ -1,6 +1,5 @@
 import hopsworks
 import pandas as pd
-from loguru import logger
 import time
 from hsfs.feature import Feature
 import numpy as np

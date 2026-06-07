@@ -9,6 +9,7 @@
 # Ignore virtual environment folders
 venv/
 env/
+.venv/
 
 # Ignore .pyc, .pyo, .pyd files (compiled files)
 __pycache__/
@@ -24,8 +25,10 @@ site-packages/
 *.db
 *.sqlite3
 
-# Ignore IDE and editor-specific files
+# Ignore macOS / IDE and editor-specific files
+.DS_Store
 .vscode/
+.claude/
 .idea/
 *.sublime-workspace
 *.sublime-project

@@ -1,15 +1,14 @@
-from pydantic import BaseModel
-from typing import Optional
-import sys
-import os
+"""Pydantic model representing an essential SEC Form 4 trade and its derivations."""
+
 import xml.etree.ElementTree as ET
-from pprint import pprint
+from typing import Optional
 
-
-from const import hold, derivative_hold, holding_ownership, holding_amounts
+from const import derivative_hold, hold, holding_amounts, holding_ownership
+from pydantic import BaseModel
 
 
 class EssentialTrade(BaseModel):
+    """Hold the essential fields of a Form 4 trade and derive computed fields."""
 
     class Config:
         arbitrary_types_allowed = True
@@ -33,7 +32,7 @@ class EssentialTrade(BaseModel):
     price: float = 0.0
     date: Optional[str] = None
     remaining_shares: Optional[int] = 0
-    ownership: Optional[str] = "D"
+    ownership: Optional[str] = 'D'
     coding: Optional[str] = None
     equity_swap: bool = False
     footnote_id: Optional[str] = None
@@ -44,7 +43,7 @@ class EssentialTrade(BaseModel):
     d_acquired_price: Optional[float] = 0.0
     d_execution_date: Optional[str] = None
     d_remaining_shares: Optional[int] = 0
-    d_ownership: Optional[str] = "D"
+    d_ownership: Optional[str] = 'D'
     d_coding: Optional[str] = None
     d_footnote_id: Optional[str] = None
 
@@ -66,11 +65,12 @@ class EssentialTrade(BaseModel):
         self.is_equity_swap = str(self.equity_swap).lower() in ['true', '1']
 
     def _set_rule105b1(self) -> str:
-        """Determine if this is a Rule 10b5-1 trade.
-        This method first checks if the rule105b1 attribute is set to True.
-        If it is not, it checks the footnotes for the presence of '10b5-1' 
-        for the footnote corresponding to the transaction."""
-        
+        """Determine whether this is a Rule 10b5-1 trade.
+
+        This method first checks whether the rule105b1 attribute is set to True.
+        If it is not, it checks the footnotes for the presence of '10b5-1' for
+        the footnote corresponding to the transaction.
+        """
         if str(self.rule105b1).lower() in ['true', '1']:
             self.rule105b1 = True
 
@@ -82,8 +82,7 @@ class EssentialTrade(BaseModel):
                     break
 
     def _handle_multiple_ownerships(self):
-        """Compute direct and indirect holdings."""
-
+        """Compute and set direct and indirect holdings from the filing XML."""
         # Determine if using derivative path or regular path
         path = derivative_hold if self.is_derivative else hold
         holdings = self.xml.findall(path)
@@ -103,7 +102,7 @@ class EssentialTrade(BaseModel):
                 direct_amount += amount
             elif ownership == 'I':
                 indirect_amount += amount
-                
+
         # Set holdings if both are present
         if direct_amount and indirect_amount:
             if not self.is_derivative:
@@ -113,18 +112,18 @@ class EssentialTrade(BaseModel):
                 self.d_direct_holding, self.d_indirect_holding = direct_amount, indirect_amount
 
     def _handle_owner_code(self):
-        self.owner_code = "".join(
-            '1' if str(pos).lower() in ['1', 'true'] else '0' for pos in [
-                self.director,
-                self.officer,
-                self.ten_percent_owner,
-                self.other
-            ]
+        """Build the owner code from the insider relationship flags."""
+        self.owner_code = ''.join(
+            '1' if str(pos).lower() in ['1', 'true'] else '0'
+            for pos in [self.director, self.officer, self.ten_percent_owner, self.other]
         )
 
     def to_dict(self) -> dict:
-        """Convert object to dictionary."""
+        """Derive computed fields and convert the trade to a dictionary.
 
+        Returns:
+            A dictionary merging insider data with the relevant transaction data.
+        """
         self._set_is_derivative()
         self._set_equity_swap()
         self._set_rule105b1()
@@ -153,7 +152,7 @@ class EssentialTrade(BaseModel):
                 'coding': self.d_coding,
                 'direct_holding': self.d_direct_holding,
                 'indirect_holding': self.d_indirect_holding,
-                'equity_swap': self.is_equity_swap
+                'equity_swap': self.is_equity_swap,
             }
 
         else:
@@ -167,7 +166,7 @@ class EssentialTrade(BaseModel):
                 'coding': self.coding,
                 'direct_holding': self.direct_holding,
                 'indirect_holding': self.indirect_holding,
-                'equity_swap': self.is_equity_swap
+                'equity_swap': self.is_equity_swap,
             }
 
         return {**insider_data, **tx_data}
