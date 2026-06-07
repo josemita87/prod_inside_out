@@ -1,6 +1,5 @@
 """Entry point that consumes filing URLs, parses Form 4s, and produces transactions."""
 
-import json
 import logging
 import time
 from datetime import datetime
@@ -8,9 +7,8 @@ from datetime import datetime
 import pandas as pd
 import xxhash
 from config import config
-from confluent_kafka import TopicPartition
+from inside_out_clients.messaging import KafkaClient
 from parser import Form4Parser
-from quixstreams import Application
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -18,60 +16,44 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(message)s',
 )
 
-app = Application(
+# Shared Kafka infra client (manual-commit consume + produce).
+kafka = KafkaClient(
     broker_address=config.kafka_broker_address,
     consumer_group=config.consumer_group,
     auto_offset_reset=config.auto_offset_reset,
-    # consumer_extra_config={'enable.auto.offset.store': True}
 )
 
-input_topic = app.topic(name=config.kafka_input_topic, value_deserializer='json', key_deserializer='string')
 
-output_topic = app.topic(name=config.kafka_output_topic, value_serializer='json', key_serializer='string')
+def select_urls(records: list) -> list:
+    """Extract ``(url, offset)`` pairs from consumed records, dropping stale ones.
 
-
-def consume_data(consumer) -> tuple[list[str], any]:
-    """Consume a batch of filing URLs from the input topic with their offsets.
+    In ``live`` mode, filings older than ``config.days_back`` are skipped; this is
+    domain policy and stays in the service rather than the Kafka client.
 
     Args:
-        consumer: Kafka consumer to poll messages from.
+        records: ``(record, offset)`` pairs as returned by the Kafka client.
 
     Returns:
-        A tuple of the collected ``(url, offset)`` pairs and the consumer.
+        The ``(url, offset)`` pairs to parse.
     """
     urls = []
-    while True:
-        message = consumer.poll(config.poll_timeout)
-        if message is None:
-            logger.warning('No new messages')
-            return urls, consumer
-
-        if len(urls) >= config.buffer_size:
-            return urls, consumer
-
+    for msg, offset in records:
         try:
-            # Decode the message
-            msg = json.loads(message.value().decode('utf-8'))
-
-            # Extract the URL and date
             url = msg['file_path']
             date = pd.to_datetime(msg['timestamp'], unit='ms')
 
-            if config.mode == 'live':
-                # Check if the filing is too old
-                if date < datetime.now() - pd.Timedelta(days=config.days_back):
-                    logger.info(f'Filing too old: {date}')
-                    continue
+            if config.mode == 'live' and date < datetime.now() - pd.Timedelta(days=config.days_back):
+                logger.info(f'Filing too old: {date}')
+                continue
 
-            # Store the URL and its offset
-            urls.append((url, message.offset()))
-
-        except:
+            urls.append((url, offset))
+        except Exception:
             logger.error("Couldn't extract URL from message")
             continue
+    return urls
 
 
-def parse_and_produce_4Fs(urls: list[str]) -> None:
+def parse_and_produce_4Fs(urls: list) -> None:
     """Parse Form 4 filings from URLs and produce their transactions in batches.
 
     Args:
@@ -89,76 +71,59 @@ def parse_and_produce_4Fs(urls: list[str]) -> None:
 
         if len(buffer) >= config.buffer_size:
             produce_data(buffer)
-            # Store the url offset of the last message produced
-            commit_offset(offset)
+            # Commit the offset of the last message produced.
+            kafka.commit_offset(offset)
             buffer = []
 
     # If there are any remaining transactions in the buffer
     if buffer:
         produce_data(buffer)
-        commit_offset(offset)
+        kafka.commit_offset(offset)
 
 
 def produce_data(data: list[dict]) -> None:
-    """Serialize transaction records and produce them to the Kafka output topic.
+    """Shape transaction records (key + timestamp) and produce them to Kafka.
 
     Args:
         data: Transaction records to publish, each with date and link fields.
     """
-    with app.get_producer() as producer:
-        for record in data:
+    messages = []
+    for record in data:
+        try:
+            timestamp = int(datetime.strptime(record['date'], '%Y-%m-%d').timestamp()) * 1000
+
+        except Exception:
             try:
-                timestamp = int(datetime.strptime(record['date'], '%Y-%m-%d').timestamp()) * 1000
+                if len(record['date'].split('-')) > 3:
+                    # If the date has time information, split out the date part
+                    date_str = '-'.join(record['date'].split('-')[:3])
+                    timestamp = int(datetime.strptime(date_str, '%Y-%m-%d').timestamp()) * 1000
+            except Exception:
+                logger.error(f'Timestamp errror (Producer) {record}')
 
-            except:
-                try:
-                    if len(record['date'].split('-')) > 3:
-                        # If the date has time information, split out the date part
-                        date_str = '-'.join(record['date'].split('-')[:3])
-                        timestamp = int(datetime.strptime(date_str, '%Y-%m-%d').timestamp()) * 1000
-                except:
-                    logger.error(f'Timestamp errror (Producer) {record}')
+        # Add timestamp to the record for future reference
+        record['timestamp'] = timestamp
 
-            # Add timestamp to the record for future reference
-            record['timestamp'] = timestamp
+        try:
+            key = xxhash.xxh64(
+                record['link'] + str(record['remaining_shares']) + ('1' if record['derivative'] else '0')
+            ).hexdigest()
 
-            try:
-                key = xxhash.xxh64(
-                    record['link'] + str(record['remaining_shares']) + ('1' if record['derivative'] else '0')
-                ).hexdigest()
+        except Exception:
+            # Create a key for the record without using link
+            key = xxhash.xxh64(str(record['remaining_shares']) + ('1' if record['derivative'] else '0')).hexdigest()
 
-            except:
-                # Create a key for the record without using link
-                key = xxhash.xxh64(str(record['remaining_shares']) + ('1' if record['derivative'] else '0')).hexdigest()
+        # Add key as a value as well
+        record['key'] = key
 
-            # Add key as a value as well
-            record['key'] = key
+        messages.append((key, record, timestamp))
 
-            message = output_topic.serialize(
-                key=key,
-                value=record,
-            )
-
-            producer.produce(topic=output_topic.name, value=message.value, key=message.key, timestamp=timestamp)
-
+    kafka.produce(config.kafka_output_topic, messages)
     logger.debug(f'Produced {len(data)} messages')
-
-
-# Auxiliary function to commit the offset after processing
-def commit_offset(offset: int) -> None:
-    """Commit the latest offset after processing.
-
-    Args:
-        offset: Offset of the last processed message; commits ``offset + 1``.
-    """
-    partition = TopicPartition(topic=input_topic.name, partition=0, offset=offset + 1)
-    consumer.commit(offsets=[partition])
 
 
 if __name__ == '__main__':
     time.sleep(config.delay)
-    consumer = app.get_consumer(auto_commit_enable=False)
-    consumer.subscribe(topics=[input_topic.name])
 
     # Logs
     logger.info('Scraper Microservice Started')
@@ -167,8 +132,8 @@ if __name__ == '__main__':
     logger.info(f'Output topic: {config.kafka_output_topic}')
 
     while True:
-        urls, consumer = consume_data(consumer)
-        transactions = parse_and_produce_4Fs(urls)
+        records = kafka.consume_with_offsets(config.kafka_input_topic, config.buffer_size, config.poll_timeout)
+        urls = select_urls(records)
+        parse_and_produce_4Fs(urls)
 
-
-logger.info('Scraper Finished scraping!. Exiting...')
+    logger.info('Scraper Finished scraping!. Exiting...')

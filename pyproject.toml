@@ -61,7 +61,8 @@ exclude = ["lab"]
 [tool.ruff.lint]
 select = [
   "D", "E", "F", "I", "B", "C4", "C90", "DTZ", "TCH", "ICN", "PIE", "SIM", "ARG",
-  "RUF", "N", "PL", "TID"
+  "RUF", "N", "PL", "TID",
+  "UP006", "UP007", "UP035", "UP045",  # Native generics (list/dict) and X | None over typing.List/Dict/Optional
 ]
 
 ignore = [

@@ -3,8 +3,12 @@ FROM python:3.12-slim
 # Bring in the uv binary from the official image
 COPY --from=ghcr.io/astral-sh/uv:0.9.7 /uv /uvx /bin/
 
+# Service lives at this path inside the image; the repo layout is replicated so
+# the [tool.uv.sources] path to the shared clients package resolves the same way
+# it does on the host. This image is built with the repo root as the build context.
+ENV SVC_DIR=/repo/sec-feature-pipeline/kafka-to-store
 # Add src to the PYTHONPATH
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=${SVC_DIR}
 ENV PYTHONUNBUFFERED=1
 # uv: compile bytecode and copy packages into the environment
 ENV UV_COMPILE_BYTECODE=1
@@ -15,17 +19,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory
-WORKDIR /app
+# Copy the shared clients package (its path source is resolved relative to the
+# service pyproject) and the service's dependency manifests first, for caching.
+COPY packages/inside-out-clients /repo/packages/inside-out-clients
+COPY sec-feature-pipeline/kafka-to-store/pyproject.toml sec-feature-pipeline/kafka-to-store/uv.lock ${SVC_DIR}/
 
-# Copy only the dependency manifests first to leverage layer caching
-COPY pyproject.toml uv.lock /app/
+WORKDIR ${SVC_DIR}
 
 # Install dependencies into the project environment
 RUN uv sync --frozen --no-dev
 
 # Copy the rest of the application code
-COPY . /app
+COPY sec-feature-pipeline/kafka-to-store ${SVC_DIR}/
 
 # Run the application
 CMD ["uv", "run", "--no-sync", "python", "src/main.py"]

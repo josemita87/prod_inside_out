@@ -4,9 +4,8 @@ import logging
 import re
 import time
 import xml.etree.ElementTree as ET
-from typing import Text
 
-import requests
+from inside_out_clients.edgar import EdgarClient
 from transaction import EssentialTrade
 
 logger = logging.getLogger(__name__)
@@ -14,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 from const import derivative_paths, derivative_root, headers, insider_paths, paths, root
+
+# SEC EDGAR HTTP client, carrying the service's required headers.
+edgar = EdgarClient(headers=headers)
 
 
 class Form4Parser:
@@ -44,14 +46,14 @@ class Form4Parser:
         time.sleep(sleep_time)
         self.xml = self.get_filing()
 
-    def get_filing(self) -> Text:
+    def get_filing(self) -> str:
         """Fetch the filing and extract its embedded XML document.
 
         Returns:
             The parsed XML element on success, or None if fetching or parsing fails.
         """
         try:
-            filing = requests.get(self.url, headers=headers).text
+            filing = edgar.get(self.url).text
             return ET.fromstring(re.search(self.XML_DELIM, filing, re.DOTALL).group(1))
 
         except Exception:

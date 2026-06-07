@@ -1,23 +1,34 @@
-"""Alpaca brokerage API wrapper for account access and order placement."""
+"""Alpaca brokerage client for account access and order placement.
+
+Pure infrastructure: credentials are passed in by the caller; this module holds
+no configuration and no trading-strategy logic.
+"""
 
 import logging
-
-import alpaca_trade_api as tradeapi
-from config import config
 
 logger = logging.getLogger(__name__)
 
 
-class AlpacaAPI:
+class AlpacaClient:
     """Client wrapper around the Alpaca REST trading API.
 
     Attributes:
         api: The authenticated Alpaca REST client.
     """
 
-    def __init__(self):
-        """Initialize the Alpaca REST client from configuration credentials."""
-        self.api = tradeapi.REST(config.API_KEY, config.API_SECRET, config.BASE_URL, api_version='v2')
+    def __init__(self, api_key: str, api_secret: str, base_url: str, api_version: str = 'v2') -> None:
+        """Initialize the Alpaca REST client from explicit credentials.
+
+        Args:
+            api_key: Alpaca API key.
+            api_secret: Alpaca API secret.
+            base_url: Alpaca REST base URL.
+            api_version: Alpaca API version (defaults to ``"v2"``).
+        """
+        # Lazy import so the SDK is only required when this client is built.
+        import alpaca_trade_api as tradeapi
+
+        self.api = tradeapi.REST(api_key, api_secret, base_url, api_version=api_version)
         logger.info('Initialized Alpaca API')
 
     def get_account(self):

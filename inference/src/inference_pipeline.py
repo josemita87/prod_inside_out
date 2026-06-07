@@ -5,11 +5,22 @@ import logging
 import h2o
 import pandas as pd
 from config import config
-from feature_store import FeatureStoreConnection
+from inside_out_clients.broker import AlpacaClient
+from inside_out_clients.feature_store import HopsworksClient
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 logger = logging.getLogger(__name__)
+
+# Catalog mapping this service's references to feature-group specs.
+FEATURE_GROUPS = {
+    'trades': {
+        'name': config.feature_group_trades,
+        'version': config.feature_group_version,
+        'primary_key': ['trade_id'],
+        'event_time': 'trade_date',
+    },
+}
 
 
 class InferencePipeline:
@@ -21,8 +32,12 @@ class InferencePipeline:
 
     def __init__(self):
         """Initialize the feature store connection and the H2O cluster."""
-        # self.alpaca_api = AlpacaAPI()
-        self.feature_store = FeatureStoreConnection()
+        self.alpaca_api = AlpacaClient(
+            api_key=config.alpaca_api_key,
+            api_secret=config.alpaca_api_secret,
+            base_url=config.alpaca_base_url,
+        )
+        self.feature_store = HopsworksClient(config.project_name, config.hopsworks_api_key, FEATURE_GROUPS)
         h2o.init()
         logger.info('Initialized H2O API')
 
@@ -39,6 +54,19 @@ class InferencePipeline:
         logger.info(f'Loaded model from: {model_path}')
         return model
 
+    def _fetch_new_trades(self) -> pd.DataFrame:
+        """Read trades from the feature store and drop duplicate/NaN rows.
+
+        Returns:
+            A cleaned DataFrame of trades, or an empty DataFrame on failure.
+        """
+        try:
+            data = pd.DataFrame(self.feature_store.read('trades'))
+            return data.drop_duplicates().dropna()
+        except Exception as e:
+            logger.error(f'Failed to fetch new trades: {e}')
+            return pd.DataFrame()
+
     def fetch_inference_data(self, inference_data_path) -> pd.DataFrame:
         """Fetch new inference data from a CSV file or feature store.
 
@@ -49,7 +77,7 @@ class InferencePipeline:
             A DataFrame of inference data.
         """
         if config.hopsworks_connect:
-            inference_data = self.feature_store.fetch_new_trades()
+            inference_data = self._fetch_new_trades()
             logger.info('Loaded inference data from feature store')
         else:
             inference_data = pd.read_csv(inference_data_path)

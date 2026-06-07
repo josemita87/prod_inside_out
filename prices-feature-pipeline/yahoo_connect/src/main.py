@@ -7,9 +7,10 @@ import pandas as pd
 import yfinance as yf
 from tqdm import tqdm
 
+from inside_out_clients.feature_store import HopsworksClient
+
 from src.clean import reduce_mem_storage
 from src.config import config
-from src.feature_store import Connection
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,27 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s %(message)s',
 )
+
+# Catalog mapping this service's references to feature-group specs.
+FEATURE_GROUPS = {
+    'p': {
+        'name': 'p',
+        'version': config.feature_group_version,
+        'primary_key': ['ticker', 'date'],
+        'event_time': 'date',
+        'online_enabled': False,
+        'stream': False,
+    },
+    'bt4': {'name': 'bt4', 'version': config.feature_group_version, 'primary_key': ['key'], 'event_time': 'date'},
+    'bi4': {
+        'name': 'bi4',
+        'version': config.feature_group_version,
+        'primary_key': ['key'],
+        'event_time': 'date',
+        'online_enabled': False,
+        'stream': False,
+    },
+}
 
 
 class YahooDataFetcher:
@@ -28,7 +50,7 @@ class YahooDataFetcher:
 
     def __init__(self):
         """Initialize the fetcher with a feature store connection."""
-        self.feature_store = Connection()
+        self.feature_store = HopsworksClient(config.project_name, config.hopsworks_api_key, FEATURE_GROUPS)
 
     def fetch_data_from_yahoo(self, prices: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
         """Fetches the latest data from Yahoo Finance for the given tickers.
@@ -70,9 +92,13 @@ class YahooDataFetcher:
         """Process the tickers in batches and fetch data from Yahoo Finance."""
         # Route to the correct feature group
         if config.system_inference:
-            data = self.feature_store.fetch_BI4()
+            data = self.feature_store.read('bi4', read_options={'use_hive': True})
         elif config.system_training:
-            data = self.feature_store.fetch_BT4(key=config.filter_key, value=config.acquired_disposed)
+            data = self.feature_store.read(
+                'bt4',
+                where=lambda fg: fg.filter(fg[config.filter_key] == config.acquired_disposed),
+                read_options={'use_hive': True},
+            )
 
         # Get the unique tickers from the 'ticker' column
         tickers = np.unique(data['ticker'].tolist())
@@ -81,9 +107,16 @@ class YahooDataFetcher:
         # Process the tickers in batches
         for i in tqdm(range(0, len(tickers), config.buffer_size), desc='Processing tickers', unit='batch'):
             processing_tickers = tickers[i : i + config.buffer_size]
-            current_data = self.feature_store.fetch_P(processing_tickers)
+            try:
+                current_data = self.feature_store.read(
+                    'p',
+                    where=lambda fg: fg.filter(fg['ticker'].isin(processing_tickers)),
+                    read_options={'use_hive': True},
+                )
+            except Exception:
+                current_data = pd.DataFrame()
             new_data = self.fetch_data_from_yahoo(current_data, processing_tickers)
-            self.feature_store.push_P(new_data)
+            self.feature_store.push('p', new_data)
 
         logger.debug('Finished processing all tickers')
 

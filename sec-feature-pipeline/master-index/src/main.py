@@ -2,19 +2,14 @@
 
 import logging
 import time
+from collections.abc import Generator
 from datetime import datetime
-from io import BytesIO
-from typing import TYPE_CHECKING, Generator
 
 import pandas as pd
-import requests
 import xxhash
 from config import config
-from monitor_live import SECLinkMonitor
-from quixstreams import Application
-
-if TYPE_CHECKING:
-    from typing import Dict, List
+from inside_out_clients.edgar import EdgarClient
+from inside_out_clients.messaging import KafkaClient
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -28,53 +23,9 @@ headers = {
     'Host': 'www.sec.gov',
 }
 
-# Create a connection to the redpanda broker
-app = Application(config.kafka_broker_address, loglevel='CRITICAL')
-output_topic = app.topic(name=config.kafka_output_topic, value_serializer='json', key_serializer='string')
-
-
-def fetch_parse_data(year, quarter):
-    """Fetch and parse the SEC master index for a given year and quarter.
-
-    Args:
-        year: Calendar year of the master index to retrieve.
-        quarter: Quarter identifier (e.g. ``QTR1``) of the master index.
-
-    Returns:
-        A DataFrame of filing records when the request succeeds, otherwise None.
-    """
-    url = f'https://www.sec.gov/Archives/edgar/full-index/{year}/{quarter}/master.idx'
-
-    response = requests.get(url, headers=headers, timeout=10)
-
-    if response.status_code == 200:
-        content_str = response.content.decode('utf-8')
-        lines = content_str.splitlines()
-
-        start_index = 0
-        # Crop the header
-        for i, line in enumerate(lines):
-            if '|' in line:
-                start_index = i + 2
-                break
-
-        data_str = '\n'.join(lines[start_index:])
-
-        data = BytesIO(data_str.encode('utf-8'))
-
-        # Now read the data into a DataFrame
-        df = pd.read_csv(
-            data,
-            sep='|',
-            header=None,
-            names=['cik', 'company', 'form_type', 'date', 'file_path'],
-            dtype=str,
-            encoding='utf-8',
-        )
-
-        time.sleep(1)
-        logger.debug(f'Fetched data for {year} {quarter}')
-        return df
+# SEC EDGAR HTTP client (carries the required User-Agent) and Kafka producer.
+edgar = EdgarClient(headers=headers)
+kafka = KafkaClient(config.kafka_broker_address, loglevel='CRITICAL')
 
 
 def produce_data(data: pd.DataFrame) -> None:
@@ -96,26 +47,13 @@ def produce_data(data: pd.DataFrame) -> None:
     data['key'] = data['file_path'].apply(lambda x: xxhash.xxh64(x).hexdigest())
 
     # Convert the data to a list of dictionaries
-    records: List[Dict] = data.to_dict(orient='records')
+    records: list[dict] = data.to_dict(orient='records')
 
-    with app.get_producer() as producer:
-        # Split the records into batches
-        batch: Generator = batch_records(records, config.buffer_size)
-
-        for records in batch:
-            for record in records:
-                key = record.pop('key')
-                message = output_topic.serialize(
-                    key=key,
-                    value=record,
-                )
-
-                producer.produce(
-                    topic=output_topic.name, value=message.value, key=message.key, timestamp=record['timestamp']
-                )
-
-            # Flush the producer
-            producer.flush()
+    # Produce one batch at a time (KafkaClient.produce flushes per call). The key
+    # is popped from the record so it is not duplicated inside the message value.
+    for batch in batch_records(records, config.buffer_size):
+        messages = [(record.pop('key'), record, record['timestamp']) for record in batch]
+        kafka.produce(config.kafka_output_topic, messages)
 
 
 def get_historic_data(years: int, form_type: str = '4') -> None:
@@ -127,7 +65,7 @@ def get_historic_data(years: int, form_type: str = '4') -> None:
     """
     for year in range(datetime.now().year - years, datetime.now().year + 1):
         for quarter in ['QTR1', 'QTR2', 'QTR3', 'QTR4']:
-            df = fetch_parse_data(year, quarter)
+            df = edgar.fetch_master_index(year, quarter)
             if isinstance(df, pd.DataFrame):
                 if not df.empty:
                     filings = df[df['form_type'] == form_type]
@@ -141,7 +79,7 @@ def get_last_quarter_data(form_type: str = '4') -> None:
         form_type: SEC form type to filter on.
     """
     quarter = f'QTR{(datetime.now().month - 1) // 3 + 1}'
-    df = fetch_parse_data(datetime.now().year, quarter)
+    df = edgar.fetch_master_index(datetime.now().year, quarter)
     if isinstance(df, pd.DataFrame):
         if not df.empty:
             filings = df[df['form_type'] == form_type]
@@ -150,12 +88,9 @@ def get_last_quarter_data(form_type: str = '4') -> None:
 
 def get_live_data() -> None:
     """Poll SEC EDGAR for new filing links and produce them at fixed intervals."""
-    # Instantiate the SECLinkMonitor
-    monitor = SECLinkMonitor(config.num_pages)
-
     # Refresh the links every `time_between_iterations` seconds
     for _ in range(config.live_iterations):
-        df = pd.DataFrame(monitor.parse_links(), columns=['file_path'])
+        df = pd.DataFrame(edgar.fetch_live_links(config.num_pages), columns=['file_path'])
 
         logger.debug(df)
         produce_data(df)

@@ -4,9 +4,22 @@ import logging
 
 import pandas as pd
 from config import config
+from inside_out_clients.feature_store import HopsworksClient
+from inside_out_clients.messaging import KafkaClient
 
-from src import clean, kafka_topic
-from src.feature_store import Connection
+# Catalog mapping this service's references to feature-group specs. The generic
+# client maps a reference to the right group; only this service knows the specs.
+FEATURE_GROUPS = {
+    'bt4': {'name': 'bt4', 'version': config.feature_group_version, 'primary_key': ['key'], 'event_time': 'date'},
+    'bi4': {
+        'name': 'bi4',
+        'version': config.feature_group_version,
+        'primary_key': ['key'],
+        'event_time': 'date',
+        'online_enabled': False,
+        'stream': False,
+    },
+}
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -15,12 +28,93 @@ logging.basicConfig(
 )
 
 
+def data_cleaning(data: list[dict]) -> pd.DataFrame:
+    """Clean the consumed data by dropping duplicates and rows with NaN values.
+
+    Args:
+        data: List of transaction dictionaries to clean.
+
+    Returns:
+        A DataFrame with duplicate rows and rows containing NaN removed.
+    """
+    # Convert the list of dicts to a DataFrame
+    data = pd.DataFrame(data)
+
+    # Drop duplicate rows
+    data = data.drop_duplicates()
+
+    # Drop rows with NaN values in any column
+    data = data.dropna()
+
+    return data
+
+
+def validate_and_reduce_mem_storage(data: pd.DataFrame) -> pd.DataFrame:
+    """Reduce DataFrame memory usage by downcasting columns to efficient dtypes.
+
+    Categorical, boolean, numeric and datetime conversions are applied where the
+    relevant columns exist. Rows that fail a numeric or date conversion are dropped.
+
+    Args:
+        data: DataFrame of transactions to optimize.
+
+    Returns:
+        A DataFrame with columns cast to memory-efficient dtypes and invalid rows removed.
+    """
+    data['link'] = data['link'].astype('str')
+
+    # Convert columns to categorical where appropriate
+    for col in [
+        'company_cik',
+        'ticker',
+        'insider_cik',
+        'insider_name',
+        'owner_code',
+        'exchange',
+        'acquired_disposed',
+        'coding',
+        'sic',
+    ]:
+        if col in data.columns:
+            data[col] = data[col].astype('category')
+
+    # Convert booleans to actual boolean dtype
+    for col in ['rule105b1', 'derivative', 'equity_swap', 'ownership']:
+        if col in data.columns:
+            data[col] = data[col].astype('bool')
+
+    # Convert numeric columns to more memory-efficient types
+    numeric_columns = {
+        'shares': 'int32',
+        'price': 'float64',
+        'remaining_shares': 'int32',
+        'direct_holding': 'int64',
+        'indirect_holding': 'int64',
+        'market_cap': 'int64',
+        'timestamp': 'int64',
+    }
+    for col, dtype in numeric_columns.items():
+        if col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors='coerce').astype(dtype)
+            data = data.dropna(subset=[col])  # Drop rows where conversion failed
+
+    # Convert 'date' to datetime
+    data['date'] = pd.to_datetime(data['date'], errors='coerce')
+    data = data.dropna(subset=['date'])  # Drop rows where 'date' conversion failed
+
+    return data
+
+
 if __name__ == '__main__':
     # Connect to the Kafka topic
-    topic = kafka_topic.Connection()
+    consumer = KafkaClient(
+        broker_address=config.kafka_broker_address,
+        consumer_group=config.consumer_group,
+        auto_offset_reset=config.auto_offset_reset,
+    )
 
     # Connect to the feature store
-    feature_store = Connection()
+    feature_store = HopsworksClient(config.project_name, config.hopsworks_api_key, FEATURE_GROUPS)
 
     is_finished = False
 
@@ -31,24 +125,24 @@ if __name__ == '__main__':
     logger.info(f'Connected to Hopsworks feature store at {"BI4" if config.system_inference else "BT4"}')
 
     while not is_finished:
-        is_finished, data = topic.consume_data(buffer_size=config.buffer_size, timeout=config.poll_timeout)
+        is_finished, records = consumer.consume_batch(
+            topic_name=config.kafka_input_topic,
+            buffer_size=config.buffer_size,
+            timeout=config.poll_timeout,
+        )
 
-        if not data.empty:
-            data: pd.DataFrame = clean.data_cleaning(data)
-            data: pd.DataFrame = clean.validate_and_reduce_mem_storage(data)
+        if records:
+            # The Kafka client returns raw records; building the DataFrame, parsing
+            # the date and downcasting dtypes are domain concerns owned here.
+            data: pd.DataFrame = data_cleaning(records)
+            data: pd.DataFrame = validate_and_reduce_mem_storage(data)
 
             # Route to the correct feature group (inference / training)
             if config.system_inference:
-                feature_store.push_BI4(
-                    data,
-                    # schema = config.expected_schema
-                )
+                feature_store.push('bi4', data)
 
             elif config.system_training:
-                feature_store.push_BT4(
-                    data,
-                    # schema = config.expected_schema
-                )
+                feature_store.push('bt4', data)
 
         else:
             logger.info('No more messages to consume. Exiting kafka-to-store...')

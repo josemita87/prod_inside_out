@@ -1,7 +1,6 @@
 """Pydantic model representing an essential SEC Form 4 trade and its derivations."""
 
 import xml.etree.ElementTree as ET
-from typing import Optional
 
 from const import derivative_hold, hold, holding_amounts, holding_ownership
 from pydantic import BaseModel
@@ -16,44 +15,44 @@ class EssentialTrade(BaseModel):
     # Insider paths
     link: str
     xml: ET.Element
-    company_cik: Optional[int] = None
-    ticker: Optional[str] = None
-    insider_cik: Optional[int] = None
-    insider_name: Optional[str] = None
-    director: Optional[bool] = False
-    officer: Optional[bool] = False
-    ten_percent_owner: Optional[bool] = False
-    other: Optional[bool] = False
-    rule105b1: Optional[bool] = False
+    company_cik: int | None = None
+    ticker: str | None = None
+    insider_cik: int | None = None
+    insider_name: str | None = None
+    director: bool | None = False
+    officer: bool | None = False
+    ten_percent_owner: bool | None = False
+    other: bool | None = False
+    rule105b1: bool | None = False
 
     # Transaction paths
-    shares: Optional[int] = 0
-    acquired_disposed: Optional[str] = None
+    shares: int | None = 0
+    acquired_disposed: str | None = None
     price: float = 0.0
-    date: Optional[str] = None
-    remaining_shares: Optional[int] = 0
-    ownership: Optional[str] = 'D'
-    coding: Optional[str] = None
+    date: str | None = None
+    remaining_shares: int | None = 0
+    ownership: str | None = 'D'
+    coding: str | None = None
     equity_swap: bool = False
-    footnote_id: Optional[str] = None
+    footnote_id: str | None = None
 
     # Derivative paths
-    d_shares: Optional[int] = 0
-    d_acquired_disposed: Optional[str] = None
-    d_acquired_price: Optional[float] = 0.0
-    d_execution_date: Optional[str] = None
-    d_remaining_shares: Optional[int] = 0
-    d_ownership: Optional[str] = 'D'
-    d_coding: Optional[str] = None
-    d_footnote_id: Optional[str] = None
+    d_shares: int | None = 0
+    d_acquired_disposed: str | None = None
+    d_acquired_price: float | None = 0.0
+    d_execution_date: str | None = None
+    d_remaining_shares: int | None = 0
+    d_ownership: str | None = 'D'
+    d_coding: str | None = None
+    d_footnote_id: str | None = None
 
     # Derived Fields
     is_derivative: bool = False
     is_equity_swap: bool = False
-    direct_holding: Optional[int] = 0
-    indirect_holding: Optional[int] = 0
-    d_direct_holding: Optional[int] = 0
-    d_indirect_holding: Optional[int] = 0
+    direct_holding: int | None = 0
+    indirect_holding: int | None = 0
+    d_direct_holding: int | None = 0
+    d_indirect_holding: int | None = 0
     owner_code: str = None
 
     def _set_is_derivative(self) -> None:

@@ -12,7 +12,8 @@ x-shared-environment: &shared-env
 services:
   master-index:
     build:
-      context: ../../sec-feature-pipeline/master-index
+      context: ../..
+      dockerfile: sec-feature-pipeline/master-index/Dockerfile
     networks:
       - redpanda-network
     env_file:
@@ -28,7 +29,8 @@ services:
 
   scraper:
     build:
-      context: ../../sec-feature-pipeline/scraper
+      context: ../..
+      dockerfile: sec-feature-pipeline/scraper/Dockerfile
     networks:
       - redpanda-network
     env_file:
@@ -47,7 +49,8 @@ services:
 
   kafka-to-store:
     build:
-      context: ../../sec-feature-pipeline/kafka-to-store
+      context: ../..
+      dockerfile: sec-feature-pipeline/kafka-to-store/Dockerfile
     networks:
       - redpanda-network
     env_file:
@@ -64,12 +67,11 @@ services:
       - scraper
     profiles:
       - sec
-    volumes:
-      - ${BASE_PATH}/docker-compose/shared_modules/feature_store.py:/app/src/feature_store.py
 
   yahoo-connect:
     build:
-      context: ../../prices-feature-pipeline/yahoo_connect
+      context: ../..
+      dockerfile: prices-feature-pipeline/yahoo_connect/Dockerfile
     networks:
       - redpanda-network
     env_file:
@@ -83,12 +85,11 @@ services:
       "on-failure:5"
     #profiles:
     #  - prices
-    volumes:
-      - ${BASE_PATH}/docker-compose/shared_modules/feature_store.py:/app/src/feature_store.py
 
   target:
     build:
-      context: ../../prices-feature-pipeline/target
+      context: ../..
+      dockerfile: prices-feature-pipeline/target/Dockerfile
     networks:
       - redpanda-network
     env_file:
@@ -104,5 +105,3 @@ services:
       - yahoo-connect
     profiles:
       - prices
-    volumes:
-      - ${BASE_PATH}/docker-compose/shared_modules/feature_store.py:/app/src/feature_store.py

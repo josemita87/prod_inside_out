@@ -1,13 +1,20 @@
-"""Entry point that consumes, enriches and re-produces SEC transactions over Kafka."""
+"""Consume SEC transactions, enrich them with market cap/exchange/SIC, re-produce.
+
+Domain orchestration only: it leverages the shared clients (Kafka, market data)
+and keeps the enricher-specific logic — date handling, source ordering, and the
+local parquet/JSON caches — here, since none of that is general-purpose infra.
+"""
 
 import json
 import logging
+import os
 import time
+from datetime import datetime
 
-from api_handler import ApiHandler
+import pandas as pd
 from config import config
-from confluent_kafka import TopicPartition
-from quixstreams import Application
+from inside_out_clients.market_data import MarketDataClient
+from inside_out_clients.messaging import KafkaClient
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -15,75 +22,104 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(message)s',
 )
 
-app = Application(
+# Shared infra clients.
+kafka = KafkaClient(
     broker_address=config.kafka_broker_address,
     consumer_group=config.consumer_group,
     auto_offset_reset=config.auto_offset_reset,
-    consumer_extra_config={'enable.auto.offset.store': True},
 )
+market_data = MarketDataClient()
 
-input_topic = app.topic(name=config.kafka_input_topic, value_deserializer='json', key_deserializer='string')
+# Local datasets, loaded once: cached market caps and the CIK -> metadata mapper.
+mcaps = pd.read_parquet(config.mcaps_path)
+mapper = json.load(open(config.mapper_path))
 
-output_topic = app.topic(name=config.kafka_output_topic, value_serializer='json', key_serializer='string')
+FAILED_PATHS = {
+    'missing_mcap': config.failed_mcaps_path,
+    'missing_date': config.failed_date_path,
+    'missing_sic': config.failed_sic_path,
+    'missing_exchange': config.failed_exchange_path,
+}
 
 
-def consume_data(consumer) -> list[tuple[dict, int]]:
-    """Consume messages from the input topic into a batch buffer.
+def _append_to_parquet(path: str, data: pd.DataFrame) -> None:
+    """Append rows to a parquet file, creating it if it does not yet exist."""
+    if os.path.exists(path) and os.path.getsize(path) > 0:
+        data = pd.concat([pd.read_parquet(path), data], ignore_index=True)
+    data.to_parquet(path, index=False)
 
-    Args:
-        consumer: The Kafka consumer subscribed to the input topic.
 
-    Returns:
-        A list of message and offset tuples, returned once the buffer is full or
-        when a poll returns no message and the buffer is non-empty.
-    """
-    buffer: list[tuple] = []
-    consumer.subscribe(topics=[input_topic.name])
-    while True:
-        message = consumer.poll(config.poll_timeout)
-
-        if message is None:
-            if buffer:
-                return buffer
-
-        # Append the message to the buffer with its offset
+def record_failure(tx: dict, kind: str) -> None:
+    """Append a failed transaction to the parquet log for the given failure kind."""
+    path = FAILED_PATHS[kind]
+    if kind == 'missing_mcap':
         try:
-            buffer.append((json.loads(message.value().decode('utf-8')), message.offset()))
-
-        except Exception as e:
-            logger.error(f'Error consuming message: {e}')
-
-        # If buffer is full, yield the data
-        if len(buffer) >= config.buffer_size:
-            return buffer
-
-
-def produce_data(data: list[tuple[dict, int]]) -> None:
-    """Produce enriched transactions to the output topic and commit the offset.
-
-    Args:
-        data: List of enriched transaction and offset tuples to produce.
-    """
-    with app.get_producer() as producer:
-        for tx, offset in data:
-            message = output_topic.serialize(key=tx['key'], value=tx)
-            last_offset = offset
-            producer.produce(topic=output_topic.name, key=message.key, value=message.value, timestamp=tx['timestamp'])
-        # Once the buffer is processed, commit the offset
-        commit_offset(last_offset)
-        logger.info(f'Enricher Microservice Enriched {len(data)} Transactions')
+            _date = datetime.strptime(tx.get('date'), '%Y-%m-%d').date()
+            fbd = pd.date_range(start=_date.replace(day=1), periods=1, freq='BMS')[0].date()
+            _append_to_parquet(path, pd.DataFrame([[tx.get('ticker').upper(), fbd]], columns=['ticker', 'date']))
+        except Exception:
+            record_failure(tx, 'missing_date')
+    elif kind == 'missing_date':
+        _append_to_parquet(path, pd.DataFrame([tx.get('ticker').upper()], columns=['ticker']))
+    elif kind in {'missing_sic', 'missing_exchange'}:
+        _append_to_parquet(path, pd.DataFrame([tx.get('company_cik')], columns=['cik']))
 
 
-# Auxiliary function to commit the offset after processing
-def commit_offset(offset: int) -> None:
-    """Commit the latest processed offset on the input topic partition.
+def get_market_cap(tx: dict):
+    """Resolve the market cap from Yahoo Finance (recent) or the local cache."""
+    try:
+        _date = datetime.strptime(tx.get('date'), '%Y-%m-%d').date()
+        fbd = pd.date_range(start=_date.replace(day=1), periods=1, freq='BMS')[0].date()
+    except (ValueError, TypeError):
+        fbd = None
+        record_failure(tx, 'missing_date')
 
-    Args:
-        offset: The offset of the last processed message; the committed position
-            is one past this offset.
-    """
-    partition = TopicPartition(topic=input_topic.name, partition=0, offset=offset + 1)
-    consumer.commit(offsets=[partition])
+    if fbd:
+        if fbd >= datetime(2024, 9, 1).date():
+            ticker = tx.get('ticker')
+            try:
+                mcap = market_data.market_cap(ticker)
+                pd.DataFrame([[ticker, mcap, fbd]], columns=['ticker', 'mcap', 'date']).to_parquet(
+                    config.mcaps_path, engine='pyarrow', append=True
+                )
+                return mcap
+            except Exception:
+                return None
+    try:
+        row = mcaps[(mcaps['ticker'] == tx.get('ticker').upper()) & (mcaps['fbd'] == fbd)]
+        return int(row['marketcap'].iloc[0])
+    except Exception:
+        record_failure(tx, 'missing_mcap')
+
+
+def get_exchange(tx: dict):
+    """Resolve the exchange from the mapper, falling back to Yahoo Finance."""
+    try:
+        return mapper['exchange'].get(tx.get('company_cik'), None)
+    except Exception:
+        try:
+            return market_data.exchange(tx.get('ticker'))
+        except Exception:
+            record_failure(tx, 'missing_exchange')
+
+
+def get_sic(tx: dict):
+    """Resolve the SIC code from the mapper."""
+    try:
+        return mapper['sic'].get(tx.get('company_cik'), None)
+    except Exception:
+        record_failure(tx, 'missing_sic')
+
+
+def enrich(transactions: list) -> list:
+    """Enrich each ``(transaction, offset)`` with market cap, exchange and SIC."""
+    enriched = []
+    for tx, offset in transactions:
+        tx['market_cap'] = get_market_cap(tx)
+        tx['exchange'] = get_exchange(tx)
+        tx['sic'] = get_sic(tx)
+        enriched.append((tx, offset))
+    return enriched
 
 
 if __name__ == '__main__':
@@ -93,23 +129,16 @@ if __name__ == '__main__':
     logger.info(f'Input topic: {config.kafka_input_topic}')
     logger.info(f'Output topic: {config.kafka_output_topic}')
 
-    consumer = app.get_consumer(auto_commit_enable=False)
-
     while True:
-        # Consume the data
-        data = consume_data(consumer)
+        # Consume a batch of (transaction, offset) pairs (manual commit).
+        data = kafka.consume_with_offsets(config.kafka_input_topic, config.buffer_size, config.poll_timeout)
 
-        # Process the data
-        processed_data = ApiHandler(
-            data,
-            config.mcaps_path,
-            config.mapper_path,
-            config.failed_mcaps_path,
-            config.failed_date_path,
-            config.failed_sic_path,
-            config.failed_exchange_path,
-            config.buffer_size,
-        ).get_enriched_data()
+        processed = enrich(data)
+        if not processed:
+            continue
 
-        # Produce the data and commit the offset
-        produce_data(processed_data)
+        # Produce the enriched transactions, then commit the last consumed offset.
+        messages = [(tx['key'], tx, tx['timestamp']) for tx, _ in processed]
+        kafka.produce(config.kafka_output_topic, messages)
+        kafka.commit_offset(processed[-1][1])
+        logger.info(f'Enricher Microservice Enriched {len(processed)} Transactions')
