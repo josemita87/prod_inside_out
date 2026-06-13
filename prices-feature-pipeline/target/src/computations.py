@@ -42,17 +42,10 @@ def compute_target(transactions: pd.DataFrame, prices: pd.DataFrame, period: int
     Returns:
         A DataFrame with computed ``pct_change`` and value columns.
     """
-    # Homogenize the date format
-    transactions['date'] = pd.to_datetime(transactions['date']).dt.tz_convert('UTC')
-    prices['date'] = pd.to_datetime(prices['date']).dt.tz_convert('UTC')
-
-    # Remove timezone information to ensure both DataFrames have the same datetime type
-    transactions['date'] = transactions['date'].dt.tz_localize(None)
-    prices['date'] = prices['date'].dt.tz_localize(None)
-
-    # Ensure both DataFrames have the same datetime type
-    transactions['date'] = transactions['date'].astype('datetime64[ns]')
-    prices['date'] = prices['date'].astype('datetime64[ns]')
+    # Homogenize to naive UTC datetimes so both frames share one datetime type.
+    # tz_localize(None) already yields datetime64[ns], so no astype is needed.
+    transactions['date'] = pd.to_datetime(transactions['date']).dt.tz_convert('UTC').dt.tz_localize(None)
+    prices['date'] = pd.to_datetime(prices['date']).dt.tz_convert('UTC').dt.tz_localize(None)
 
     # Sort both dataframes by date
     transactions.sort_values(['date'], inplace=True)
@@ -62,9 +55,13 @@ def compute_target(transactions: pd.DataFrame, prices: pd.DataFrame, period: int
     assert prices['date'].is_monotonic_increasing, 'Price dates not sorted'
 
     # Backward merge_asof to get the start price
-    start_state = pd.merge_asof(left=transactions, right=prices, on='date', by='ticker', direction='backward').rename(
-        columns={'close': 'start_price'}
-    )
+    start_state = pd.merge_asof(
+        left=transactions,
+        right=prices,
+        on='date',
+        by='ticker',
+        direction='backward'
+    ).rename(columns={'close': 'start_price'})
 
     # Create future_date column and filter out dates in the future
     latest_date = prices['date'].max()
@@ -73,28 +70,37 @@ def compute_target(transactions: pd.DataFrame, prices: pd.DataFrame, period: int
 
     # Perform forward merge_asof to get the end price
     end_state = pd.merge_asof(
-        left=start_state, right=prices, left_on='future_date', right_on='date', by='ticker', direction='forward'
+        left=start_state,
+        right=prices,
+        left_on='future_date',
+        right_on='date',
+        by='ticker',
+        direction='forward'
     ).rename(columns={'close': 'end_price', 'date_x': 'date'})
 
     # Drop the future_date column
-    end_state = end_state.drop(columns=['future_date'])
+    es = end_state.drop(columns=['future_date'])
 
-    # Calculate % change
-    end_state['pct_change'] = ((end_state['end_price'] - end_state['start_price']) / end_state['start_price']).round(5)
+    # Calculate % change of end_state (es)
+    es['pct_change'] = (
+        (es['end_price'] - es['start_price']) / es['start_price']
+    ).round(5)
 
     # Collapse price columns into one: this way we increase likelihood of having a price to work with
-    end_state['price'] = np.where(end_state['price'] == 0, end_state['start_price'], end_state['price'])
+    es['price'] = np.where(es['price'] == 0, es['start_price'], es['price'])
 
     # Convert the shares-related counts to USD value
-    end_state[['tx_value', 'remaining_value', 'direct_holding', 'indirect_holding']] = end_state[
+    es[['tx_value', 'remaining_value', 'direct_holding', 'indirect_holding']] = end_state[
         ['shares', 'remaining_shares', 'direct_holding', 'indirect_holding']
-    ].mul(end_state['price'], axis=0)
+    ].mul(es['price'], axis=0)
 
     # Drop unnecessary columns
-    end_state = end_state.drop(columns=['start_price', 'end_price', 'remaining_shares', 'shares', 'date_y'])
+    es = es.drop(
+        columns=['start_price', 'end_price', 'remaining_shares', 'shares', 'date_y']
+    )
 
-    logger.debug(f'Target computation completed. Shape: {end_state.shape}')
-    return end_state
+    logger.debug(f'Target computation completed. Shape: {es.shape}')
+    return es
 
 
 def compute_RT4(df: pd.DataFrame, timedelta: int) -> pd.DataFrame:
