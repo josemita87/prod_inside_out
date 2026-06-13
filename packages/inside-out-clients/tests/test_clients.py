@@ -275,6 +275,52 @@ def test_market_data_close_history_returns_tidy_frame(monkeypatch):
     assert out['close'].tolist() == [10.0, 11.0]
 
 
+def test_market_data_close_histories_tags_skips_and_downcasts(monkeypatch):
+    import pandas as pd
+
+    starts_seen = {}
+
+    def _download(symbol, start=None):
+        starts_seen[symbol] = start
+        if symbol == 'BAD':
+            raise ValueError('delisted')
+        idx = pd.to_datetime(['2024-01-02', '2024-01-01'])  # deliberately unsorted
+        return pd.DataFrame({'Close': [11.0, 10.0]}, index=idx)
+
+    fake = types.ModuleType('yfinance')
+    fake.download = _download
+    monkeypatch.setitem(sys.modules, 'yfinance', fake)
+
+    from inside_out_clients.market_data import MarketDataClient
+
+    out = MarketDataClient().close_histories(['AAPL', 'BAD', 'MSFT'], starts={'AAPL': '2024-01-01'})
+
+    # Per-symbol starts thread through; symbols absent from the mapping fetch full history.
+    assert starts_seen == {'AAPL': '2024-01-01', 'BAD': None, 'MSFT': None}
+    # The failed symbol is skipped, not fatal; survivors are tagged by ticker.
+    assert set(out['ticker']) == {'AAPL', 'MSFT'}
+    # Storage-friendly dtypes and (ticker, date) ordering.
+    assert out['close'].dtype == 'float32'
+    assert isinstance(out['ticker'].dtype, pd.CategoricalDtype)
+    aapl = out[out['ticker'] == 'AAPL']
+    assert aapl['date'].is_monotonic_increasing
+
+
+def test_market_data_close_histories_empty_when_all_fail(monkeypatch):
+    def _download(symbol, start=None):
+        raise ValueError('nope')
+
+    fake = types.ModuleType('yfinance')
+    fake.download = _download
+    monkeypatch.setitem(sys.modules, 'yfinance', fake)
+
+    from inside_out_clients.market_data import MarketDataClient
+
+    out = MarketDataClient().close_histories(['BAD'])
+    assert list(out.columns) == ['date', 'close', 'ticker']
+    assert out.empty
+
+
 # --------------------------------------------------------------------------- #
 # load_feature_group_catalog
 # --------------------------------------------------------------------------- #
