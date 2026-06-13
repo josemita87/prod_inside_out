@@ -10,6 +10,8 @@ When a corporate insider sells their own company's stock, they must disclose it 
 
 ## Why it's interesting
 
+**The motivating question:** do corporate insiders actually beat the market? Insiders trade their own company's stock with an information advantage no one else has, and I have long wanted to settle empirically whether their sales precede real underperformance or whether the signal is already priced in. SecForm4Strategy is the apparatus built to answer that question end to end, and the engineering below is what makes the answer trustworthy.
+
 - **A real, messy data pipeline:** SEC EDGAR scraping, XML parsing, a streaming bus, a feature store, and a market-data feed, wired into one coherent system.
 - **A leakage-aware target:** the per-ticker forward return is computed with an *expanding* window, so a transaction's label never sees future transactions of the same ticker.
 - **Clean service boundaries:** each microservice owns one stage, and all external SDKs sit behind a single shared `secform4strategy-clients` package that holds *zero* domain knowledge.
