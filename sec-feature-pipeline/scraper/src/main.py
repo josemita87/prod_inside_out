@@ -8,7 +8,7 @@ import pandas as pd
 import xxhash
 from config import config
 from inside_out_clients.messaging import KafkaClient
-from parser import Form4Parser
+from parser import parse_filing
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -64,7 +64,7 @@ def parse_and_produce_4Fs(urls: list) -> None:
         urls = urls[: config.test_size]
 
     for url, offset in urls:
-        filing_transactions = Form4Parser(url, config.sleep_time).create_txs()
+        filing_transactions = parse_filing(url, config.sleep_time)
 
         if filing_transactions:
             buffer.extend(filing_transactions)
