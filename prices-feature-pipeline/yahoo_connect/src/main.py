@@ -1,13 +1,13 @@
 """Entry point for fetching Yahoo Finance prices into the feature store."""
 
 import logging
+import time
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from tqdm import tqdm
-
 from inside_out_clients.feature_store import HopsworksClient
+from tqdm import tqdm
 
 from src.clean import reduce_mem_storage
 from src.config import config
@@ -123,9 +123,9 @@ class YahooDataFetcher:
 
 def main():
     """Main function to initiate the YahooDataFetcher."""
-    """time.sleep(config.delay)
+    time.sleep(config.delay)
     fetcher = YahooDataFetcher()
-    fetcher.process_tickers()"""
+    fetcher.process_tickers()
 
 
 if __name__ == '__main__':

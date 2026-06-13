@@ -95,7 +95,7 @@ class DataProcessor:
                 read_options={'use_hive': True},
             )
             # Normalize tickers
-            BI4 = clean.normalize_data(BI4)
+            BI4, _ = clean.normalize_data(BI4)
 
             # Aggregate the data on a daily basis, as defined by config.adg_dict
             BI4_AGG = computations.data_aggregation(BI4, config.agg_dict)
@@ -107,7 +107,7 @@ class DataProcessor:
             RT4 = self.feature_store.read('rt4', read_options={'use_hive': True})
 
             # Map the average pct_change to BIR4
-            BIR4 = computations.map_RT4_to_BIR4(RT4)
+            BIR4 = computations.map_RT4_to_BIR4(RT4, BI4_AGG)
             BIR4 = clean.data_cleaning(BIR4)
 
             # Push BIR4 to the feature store

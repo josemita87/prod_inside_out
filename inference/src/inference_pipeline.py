@@ -17,8 +17,8 @@ FEATURE_GROUPS = {
     'trades': {
         'name': config.feature_group_trades,
         'version': config.feature_group_version,
-        'primary_key': ['trade_id'],
-        'event_time': 'trade_date',
+        'primary_key': ['key'],
+        'event_time': 'date',
     },
 }
 

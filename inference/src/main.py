@@ -54,4 +54,4 @@ if __name__ == '__main__':
         'Rows are not perfectly aligned'
     )
     # Execute short trades based on predictions and config.threshold
-    inference_data.execute_trades(predictions_df, config.prediction_threshold)
+    inference_pipeline.execute_trades(predictions_df, config.prediction_threshold)
