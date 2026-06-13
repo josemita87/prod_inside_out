@@ -1,1 +1,1 @@
-"""Inference service package for the prod_inside_out trading pipeline."""
+"""Inference service package for the SecForm4Strategy trading pipeline."""

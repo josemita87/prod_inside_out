@@ -31,7 +31,7 @@ def test_alpaca_threads_credentials_and_places_order(monkeypatch):
     fake.REST = _FakeREST
     monkeypatch.setitem(sys.modules, 'alpaca_trade_api', fake)
 
-    from inside_out_clients.broker import AlpacaClient
+    from secform4strategy_clients.broker import AlpacaClient
 
     client = AlpacaClient(api_key='k', api_secret='s', base_url='http://x')
     assert rest_calls == {
@@ -157,7 +157,7 @@ def test_kafka_returns_raw_dicts_without_parsing(monkeypatch):
     ]
     holder = _install_fake_quixstreams(monkeypatch, msgs)
 
-    from inside_out_clients.messaging import KafkaClient
+    from secform4strategy_clients.messaging import KafkaClient
 
     consumer = KafkaClient(broker_address='b:9092', consumer_group='g', auto_offset_reset='earliest')
     assert holder['app'].kwargs['broker_address'] == 'b:9092'
@@ -175,7 +175,7 @@ def test_kafka_returns_full_buffer_not_finished(monkeypatch):
     msgs = [_FakeMessage(b'{"a": 1}'), _FakeMessage(b'{"a": 2}'), _FakeMessage(b'{"a": 3}')]
     _install_fake_quixstreams(monkeypatch, msgs)
 
-    from inside_out_clients.messaging import KafkaClient
+    from secform4strategy_clients.messaging import KafkaClient
 
     consumer = KafkaClient(broker_address='b', consumer_group='g', auto_offset_reset='earliest')
     finished, records = consumer.consume_batch('td', buffer_size=2, timeout=1)
@@ -186,7 +186,7 @@ def test_kafka_returns_full_buffer_not_finished(monkeypatch):
 def test_kafka_producer_serializes_and_flushes(monkeypatch):
     holder = _install_fake_quixstreams(monkeypatch, [])
 
-    from inside_out_clients.messaging import KafkaClient
+    from secform4strategy_clients.messaging import KafkaClient
 
     client = KafkaClient(broker_address='b:9092')
     client.produce(
@@ -215,7 +215,7 @@ def test_kafka_consume_with_offsets_and_commit(monkeypatch):
     ck.TopicPartition = _TopicPartition
     monkeypatch.setitem(sys.modules, 'confluent_kafka', ck)
 
-    from inside_out_clients.messaging import KafkaClient
+    from secform4strategy_clients.messaging import KafkaClient
 
     client = KafkaClient(broker_address='b', consumer_group='g', auto_offset_reset='earliest')
     batch = client.consume_with_offsets('td', buffer_size=10, timeout=1)
@@ -240,7 +240,7 @@ def test_market_data_reads_info_fields(monkeypatch):
     fake.Ticker = _FakeTicker
     monkeypatch.setitem(sys.modules, 'yfinance', fake)
 
-    from inside_out_clients.market_data import MarketDataClient
+    from secform4strategy_clients.market_data import MarketDataClient
 
     client = MarketDataClient()
     assert client.market_cap('AAPL') == 123
@@ -265,7 +265,7 @@ def test_market_data_close_history_returns_tidy_frame(monkeypatch):
     fake.download = _download
     monkeypatch.setitem(sys.modules, 'yfinance', fake)
 
-    from inside_out_clients.market_data import MarketDataClient
+    from secform4strategy_clients.market_data import MarketDataClient
 
     out = MarketDataClient().close_history('AAPL', start='2024-01-01')
     # Caller's symbol and start thread straight through to yfinance.download.
@@ -291,7 +291,7 @@ def test_market_data_close_histories_tags_skips_and_downcasts(monkeypatch):
     fake.download = _download
     monkeypatch.setitem(sys.modules, 'yfinance', fake)
 
-    from inside_out_clients.market_data import MarketDataClient
+    from secform4strategy_clients.market_data import MarketDataClient
 
     out = MarketDataClient().close_histories(['AAPL', 'BAD', 'MSFT'], starts={'AAPL': '2024-01-01'})
 
@@ -314,7 +314,7 @@ def test_market_data_close_histories_empty_when_all_fail(monkeypatch):
     fake.download = _download
     monkeypatch.setitem(sys.modules, 'yfinance', fake)
 
-    from inside_out_clients.market_data import MarketDataClient
+    from secform4strategy_clients.market_data import MarketDataClient
 
     out = MarketDataClient().close_histories(['BAD'])
     assert list(out.columns) == ['date', 'close', 'ticker']
@@ -325,7 +325,7 @@ def test_market_data_close_histories_empty_when_all_fail(monkeypatch):
 # load_feature_group_catalog
 # --------------------------------------------------------------------------- #
 def test_load_feature_group_catalog_injects_version_and_defaults_name(tmp_path):
-    from inside_out_clients.feature_store import load_feature_group_catalog
+    from secform4strategy_clients.feature_store import load_feature_group_catalog
 
     spec = tmp_path / 'feature_groups.yaml'
     spec.write_text(

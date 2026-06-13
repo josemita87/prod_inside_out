@@ -30,20 +30,20 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "autopep8" },
-    { name = "inside-out-clients", extra = ["market-data", "messaging"] },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "pydantic-settings" },
+    { name = "secform4strategy-clients", extra = ["market-data", "messaging"] },
     { name = "xxhash" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "autopep8", specifier = ">=2.3.1,<3.0.0" },
-    { name = "inside-out-clients", extras = ["market-data", "messaging"], directory = "../../packages/inside-out-clients" },
     { name = "pandas", specifier = ">=2.2.3,<3.0.0" },
     { name = "pyarrow", specifier = ">=18.0.0,<19.0.0" },
     { name = "pydantic-settings", specifier = ">=2.6,<3.0" },
+    { name = "secform4strategy-clients", extras = ["market-data", "messaging"], directory = "../../packages/secform4strategy-clients" },
     { name = "xxhash", specifier = ">=3.5.0,<4.0.0" },
 ]
 
@@ -498,33 +498,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/cd/63/9496c57188a2ee585
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/5e/d4e9f1a599fb8e573b7b87160658329fbf28d19eac2718f51fc3def3aa5a/idna-3.18-py3-none-any.whl", hash = "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2", size = 65455, upload-time = "2026-06-02T14:34:06.319Z" },
 ]
-
-[[package]]
-name = "inside-out-clients"
-version = "0.1.0"
-source = { directory = "../../packages/inside-out-clients" }
-
-[package.optional-dependencies]
-market-data = [
-    { name = "yfinance" },
-]
-messaging = [
-    { name = "confluent-kafka" },
-    { name = "quixstreams" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "alpaca-trade-api", marker = "extra == 'broker'", specifier = ">=3.2,<4" },
-    { name = "confluent-kafka", marker = "extra == 'messaging'", specifier = ">=2.6,<3" },
-    { name = "hopsworks", marker = "extra == 'feature-store'", specifier = ">=4.1,<5" },
-    { name = "pandas", marker = "extra == 'edgar'", specifier = ">=2.1" },
-    { name = "pyarrow", marker = "extra == 'feature-store'", specifier = ">=18" },
-    { name = "quixstreams", marker = "extra == 'messaging'", specifier = ">=3.1,<4" },
-    { name = "requests", marker = "extra == 'edgar'", specifier = ">=2.32,<3" },
-    { name = "yfinance", marker = "extra == 'market-data'", specifier = ">=0.2.48,<0.3" },
-]
-provides-extras = ["feature-store", "broker", "messaging", "edgar", "market-data"]
 
 [[package]]
 name = "joserfc"
@@ -1216,6 +1189,38 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/15/2d/ce1f605fe036aadd460e5822e578c6c7ec3a860936cca37d6e0f299daa77/rpds_py-2026.5.1-cp315-cp315t-win32.whl", hash = "sha256:75808f6c38ce7749bb68cc2770161aae5045e6c6f6781a9782e74b93304399df", size = 207866, upload-time = "2026-05-28T12:01:49.648Z" },
     { url = "https://files.pythonhosted.org/packages/79/cb/966040123eb102371559746908ef2c9471f4d43e17ec9a645a2258dab64b/rpds_py-2026.5.1-cp315-cp315t-win_amd64.whl", hash = "sha256:90bd6630002a1c7f09e7843dd79f0d24f3d2897cc25a753480917865d14f15b3", size = 225441, upload-time = "2026-05-28T12:01:51.408Z" },
 ]
+
+[[package]]
+name = "secform4strategy-clients"
+version = "0.1.0"
+source = { directory = "../../packages/secform4strategy-clients" }
+
+[package.optional-dependencies]
+market-data = [
+    { name = "pandas" },
+    { name = "yfinance" },
+]
+messaging = [
+    { name = "confluent-kafka" },
+    { name = "quixstreams" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpaca-trade-api", marker = "extra == 'broker'", specifier = ">=3.2,<4" },
+    { name = "beautifulsoup4", marker = "extra == 'edgar-live'", specifier = ">=4,<5" },
+    { name = "confluent-kafka", marker = "extra == 'messaging'", specifier = ">=2.6,<3" },
+    { name = "hopsworks", marker = "extra == 'feature-store'", specifier = ">=4.1,<5" },
+    { name = "pandas", marker = "extra == 'edgar'", specifier = ">=2.1" },
+    { name = "pandas", marker = "extra == 'market-data'", specifier = ">=2.1" },
+    { name = "pyarrow", marker = "extra == 'feature-store'", specifier = ">=18" },
+    { name = "pyyaml", marker = "extra == 'feature-store'", specifier = ">=6,<7" },
+    { name = "quixstreams", marker = "extra == 'messaging'", specifier = ">=3.1,<4" },
+    { name = "requests", marker = "extra == 'edgar'", specifier = ">=2.32,<3" },
+    { name = "selenium", marker = "extra == 'edgar-live'", specifier = ">=4.28,<5" },
+    { name = "yfinance", marker = "extra == 'market-data'", specifier = ">=0.2.48,<0.3" },
+]
+provides-extras = ["feature-store", "broker", "messaging", "edgar", "edgar-live", "market-data"]
 
 [[package]]
 name = "six"

@@ -6,8 +6,8 @@ from pathlib import Path
 import pandas as pd
 from config import config
 from constants import FeatureGroup
-from inside_out_clients.feature_store import HopsworksClient, load_feature_group_catalog
-from inside_out_clients.messaging import KafkaClient
+from secform4strategy_clients.feature_store import HopsworksClient, load_feature_group_catalog
+from secform4strategy_clients.messaging import KafkaClient
 
 # Catalog of feature groups this service touches, loaded from the YAML spec template.
 FEATURE_GROUPS = load_feature_group_catalog(Path(__file__).parent / 'feature_groups.yaml', config.feature_group_version)

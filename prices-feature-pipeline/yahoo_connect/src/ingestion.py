@@ -11,8 +11,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from inside_out_clients.feature_store import HopsworksClient, load_feature_group_catalog
-from inside_out_clients.market_data import MarketDataClient
+from secform4strategy_clients.feature_store import HopsworksClient, load_feature_group_catalog
+from secform4strategy_clients.market_data import MarketDataClient
 from tqdm import tqdm
 
 from src.config import config

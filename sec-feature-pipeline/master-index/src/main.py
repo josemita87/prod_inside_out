@@ -8,8 +8,8 @@ from datetime import datetime
 import pandas as pd
 import xxhash
 from config import config
-from inside_out_clients.edgar import EdgarClient
-from inside_out_clients.messaging import KafkaClient
+from secform4strategy_clients.edgar import EdgarClient
+from secform4strategy_clients.messaging import KafkaClient
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(

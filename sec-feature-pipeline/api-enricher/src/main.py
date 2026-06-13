@@ -13,8 +13,8 @@ from datetime import datetime
 
 import pandas as pd
 from config import config
-from inside_out_clients.market_data import MarketDataClient
-from inside_out_clients.messaging import KafkaClient
+from secform4strategy_clients.market_data import MarketDataClient
+from secform4strategy_clients.messaging import KafkaClient
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(

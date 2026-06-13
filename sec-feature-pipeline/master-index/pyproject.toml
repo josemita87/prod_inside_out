@@ -8,7 +8,7 @@ requires-python = ">=3.12,<4.0"
 dependencies = [
     # Kafka (producer), SEC EDGAR HTTP, and the EDGAR live-link scraper all come
     # from the shared clients package (edgar-live carries Selenium + BeautifulSoup).
-    "inside-out-clients[messaging,edgar,edgar-live]",
+    "secform4strategy-clients[messaging,edgar,edgar-live]",
     "pandas>=2.2.3,<3.0.0",
     "autopep8>=2.3.1,<3.0.0",
     "xxhash>=3.5.0,<4.0.0",
@@ -18,4 +18,4 @@ dependencies = [
 package = false
 
 [tool.uv.sources]
-inside-out-clients = { path = "../../packages/inside-out-clients" }
+secform4strategy-clients = { path = "../../packages/secform4strategy-clients" }

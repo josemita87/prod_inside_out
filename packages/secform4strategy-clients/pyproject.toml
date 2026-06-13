@@ -1,7 +1,7 @@
 [project]
-name = "inside-out-clients"
+name = "secform4strategy-clients"
 version = "0.1.0"
-description = "Pure infrastructure clients (Hopsworks, Kafka, Alpaca) shared across the Inside-Out microservices."
+description = "Pure infrastructure clients (Hopsworks, Kafka, Alpaca) shared across the SecForm4Strategy microservices."
 readme = "README.md"
 authors = [{ name = "Josep Cubedo Macian", email = "josep.cubedo@cabsa.es" }]
 # Permissive range: each consuming service resolves this package independently
@@ -26,4 +26,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/inside_out_clients"]
+packages = ["src/secform4strategy_clients"]

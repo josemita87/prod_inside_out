@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from inside_out_clients.feature_store import HopsworksClient, load_feature_group_catalog
+from secform4strategy_clients.feature_store import HopsworksClient, load_feature_group_catalog
 
 from src import clean, computations
 from src.config import config

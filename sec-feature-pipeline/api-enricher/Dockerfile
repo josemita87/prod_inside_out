@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy the shared clients package (its path source is resolved relative to the
 # service pyproject) and the service's dependency manifests first, for caching.
-COPY packages/inside-out-clients /repo/packages/inside-out-clients
+COPY packages/secform4strategy-clients /repo/packages/secform4strategy-clients
 COPY sec-feature-pipeline/api-enricher/pyproject.toml sec-feature-pipeline/api-enricher/uv.lock ${SVC_DIR}/
 
 WORKDIR ${SVC_DIR}

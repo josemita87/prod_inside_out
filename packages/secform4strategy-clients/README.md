@@ -1,6 +1,6 @@
-# inside-out-clients
+# secform4strategy-clients
 
-Pure infrastructure clients shared across the Inside-Out microservices.
+Pure infrastructure clients shared across the SecForm4Strategy microservices.
 
 Each client is a thin, parameterised wrapper around an external SDK. The clients
 hold **no domain knowledge** — no hardcoded feature-group names or keys, no
@@ -18,24 +18,24 @@ consuming and producing — not separate consumer/producer classes):
 
 | Client | Module | Extra | SDK |
 | --- | --- | --- | --- |
-| `HopsworksClient` | `inside_out_clients.feature_store` | `feature-store` | `hopsworks` |
-| `AlpacaClient` | `inside_out_clients.broker` | `broker` | `alpaca-trade-api` |
-| `KafkaClient` | `inside_out_clients.messaging` | `messaging` | `quixstreams` |
-| `EdgarClient` | `inside_out_clients.edgar` | `edgar` (+ `edgar-live` for `fetch_live_links`) | `requests` / `selenium` |
-| `MarketDataClient` | `inside_out_clients.market_data` | `market-data` | `yfinance` |
+| `HopsworksClient` | `secform4strategy_clients.feature_store` | `feature-store` | `hopsworks` |
+| `AlpacaClient` | `secform4strategy_clients.broker` | `broker` | `alpaca-trade-api` |
+| `KafkaClient` | `secform4strategy_clients.messaging` | `messaging` | `quixstreams` |
+| `EdgarClient` | `secform4strategy_clients.edgar` | `edgar` (+ `edgar-live` for `fetch_live_links`) | `requests` / `selenium` |
+| `MarketDataClient` | `secform4strategy_clients.market_data` | `market-data` | `yfinance` |
 
 ```toml
 # in a service pyproject.toml
-dependencies = ["inside-out-clients[feature-store,messaging]"]
+dependencies = ["secform4strategy-clients[feature-store,messaging]"]
 
 [tool.uv.sources]
-inside-out-clients = { path = "../../packages/inside-out-clients" }  # depth varies per service
+secform4strategy-clients = { path = "../../packages/secform4strategy-clients" }  # depth varies per service
 ```
 
 ## Usage
 
 ```python
-from inside_out_clients.feature_store import HopsworksClient
+from secform4strategy_clients.feature_store import HopsworksClient
 
 fs = HopsworksClient(project_name="my_project", api_key="...")
 bt4 = fs.feature_group(name="bt4", version=1, primary_key=["key"], event_time="date")

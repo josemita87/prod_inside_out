@@ -8,7 +8,7 @@ license = "MIT"
 requires-python = ">=3.10,<3.13"
 dependencies = [
     # Hopsworks feature store + Alpaca broker come from the shared clients package.
-    "inside-out-clients[feature-store,broker]",
+    "secform4strategy-clients[feature-store,broker]",
     "numpy==1.26.*",
     "scipy>=1.15.1,<2.0.0",
     "pandas<2.2.0",
@@ -24,4 +24,4 @@ dependencies = [
 package = false
 
 [tool.uv.sources]
-inside-out-clients = { path = "../packages/inside-out-clients" }
+secform4strategy-clients = { path = "../packages/secform4strategy-clients" }

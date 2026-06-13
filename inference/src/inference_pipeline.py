@@ -7,8 +7,8 @@ import h2o
 import pandas as pd
 from config import config
 from constants import FeatureGroup
-from inside_out_clients.broker import AlpacaClient
-from inside_out_clients.feature_store import HopsworksClient, load_feature_group_catalog
+from secform4strategy_clients.broker import AlpacaClient
+from secform4strategy_clients.feature_store import HopsworksClient, load_feature_group_catalog
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 

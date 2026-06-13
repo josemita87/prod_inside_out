@@ -6,7 +6,7 @@ import time
 import xml.etree.ElementTree as ET
 
 from const import derivative_paths, derivative_root, headers, insider_paths, paths, root
-from inside_out_clients.edgar import EdgarClient
+from secform4strategy_clients.edgar import EdgarClient
 from transaction import EssentialTrade
 
 logger = logging.getLogger(__name__)

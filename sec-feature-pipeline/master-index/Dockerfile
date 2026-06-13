@@ -49,7 +49,7 @@ ENV UV_LINK_MODE=copy
 
 # Copy the shared clients package (its path source is resolved relative to the
 # service pyproject) and the service's dependency manifests first, for caching.
-COPY packages/inside-out-clients /repo/packages/inside-out-clients
+COPY packages/secform4strategy-clients /repo/packages/secform4strategy-clients
 COPY sec-feature-pipeline/master-index/pyproject.toml sec-feature-pipeline/master-index/uv.lock ${SVC_DIR}/
 
 WORKDIR ${SVC_DIR}

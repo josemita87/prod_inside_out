@@ -1,8 +1,8 @@
-# Inside-Out
+# SecForm4Strategy
 
 **A microservice ML system that turns SEC Form 4 insider-trading filings into a short-side equity signal.**
 
-When a corporate insider sells their own company's stock, they must disclose it to the SEC on a Form 4 within two business days. Inside-Out ingests those filings in near-real-time, joins each transaction to the stock's forward price action, trains a model to predict the return that *follows* an insider sale, and shorts the names it expects to fall, paper-traded through Alpaca.
+When a corporate insider sells their own company's stock, they must disclose it to the SEC on a Form 4 within two business days. SecForm4Strategy ingests those filings in near-real-time, joins each transaction to the stock's forward price action, trains a model to predict the return that *follows* an insider sale, and shorts the names it expects to fall, paper-traded through Alpaca.
 
 > **Project status: portfolio / research.** This is an end-to-end systems-and-ML engineering showcase, not a production trading system or investment advice. It runs against paper-trading and a personal Hopsworks project, and the strategy is illustrative.
 
@@ -12,7 +12,7 @@ When a corporate insider sells their own company's stock, they must disclose it 
 
 - **A real, messy data pipeline:** SEC EDGAR scraping, XML parsing, a streaming bus, a feature store, and a market-data feed, wired into one coherent system.
 - **A leakage-aware target:** the per-ticker forward return is computed with an *expanding* window, so a transaction's label never sees future transactions of the same ticker.
-- **Clean service boundaries:** each microservice owns one stage, and all external SDKs sit behind a single shared `inside-out-clients` package that holds *zero* domain knowledge.
+- **Clean service boundaries:** each microservice owns one stage, and all external SDKs sit behind a single shared `secform4strategy-clients` package that holds *zero* domain knowledge.
 - **Reproducible, typed, linted:** a `uv` monorepo with per-service lockfiles and a repo-wide quality gate (ruff, mypy, pydoclint, bandit).
 
 ---
@@ -78,7 +78,7 @@ Kafka topics mirror the split: `tmi`/`imi` (training/inference master index) fee
 | **prices-feature-pipeline/target** | Joins transactions to prices, computes the forward return over `DELTA_PERIOD` days, derives the leakage-free expanding per-ticker average, and writes `RT4` (train) / `BIR4` (inference). |
 | **training** | Loads `RT4`, trains an H2O AutoML regressor on the forward-return target, runs a short-side back-test, and saves the model. |
 | **inference** | Loads the saved model, scores the latest `BIR4`, and places short-sell orders via Alpaca for names predicted to fall. |
-| **packages/inside-out-clients** | Shared, domain-free wrappers for every external SDK (Hopsworks, Alpaca, Kafka/quixstreams, EDGAR, yfinance). See its [README](packages/inside-out-clients/README.md). |
+| **packages/secform4strategy-clients** | Shared, domain-free wrappers for every external SDK (Hopsworks, Alpaca, Kafka/quixstreams, EDGAR, yfinance). See its [README](packages/secform4strategy-clients/README.md). |
 
 ### System modes
 
@@ -102,13 +102,13 @@ Within each, two profiles let you bring the halves up independently:
 ├── prices-feature-pipeline/     # price + target features (yahoo_connect, target)
 ├── training/                    # H2O AutoML training + short-side simulation
 ├── inference/                   # model scoring + Alpaca order placement
-├── packages/inside-out-clients/ # shared, domain-free SDK wrappers (path-dependency)
+├── packages/secform4strategy-clients/ # shared, domain-free SDK wrappers (path-dependency)
 ├── docker-compose/              # redpanda + system-{training,inference} stacks and env files
 ├── Makefile                     # quality gate + compose entrypoints
 └── pyproject.toml               # repo-wide ruff/mypy/pydoclint/bandit config
 ```
 
-Each service is its own `uv` project (own `pyproject.toml` + `uv.lock`) and Dockerfile, building from the repo root so it can pull in the shared `inside-out-clients` package by path.
+Each service is its own `uv` project (own `pyproject.toml` + `uv.lock`) and Dockerfile, building from the repo root so it can pull in the shared `secform4strategy-clients` package by path.
 
 ---
 

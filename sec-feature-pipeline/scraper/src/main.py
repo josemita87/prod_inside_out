@@ -7,7 +7,7 @@ from datetime import datetime
 import pandas as pd
 import xxhash
 from config import config
-from inside_out_clients.messaging import KafkaClient
+from secform4strategy_clients.messaging import KafkaClient
 from parser import parse_filing
 
 logger = logging.getLogger(__name__)
