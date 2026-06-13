@@ -1,6 +1,7 @@
 """Application settings loaded from environment variables via Pydantic."""
 
 from dotenv import load_dotenv
+from paths import DATA_SOURCE_PATH, LOG_PATH, MODELS_DIR, PLOT_PATH
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -18,11 +19,11 @@ class Config(BaseSettings):
     feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
     api_key: str = Field(..., json_schema_extra={'env': 'API_KEY'})
 
-    # Paths
-    models_directory: str = Field(..., json_schema_extra={'env': 'MODELS_DIRECTORY'})
-    data_source_path: str = Field(..., json_schema_extra={'env': 'DATA_SOURCE_PATH'})
-    plot_path: str = Field(..., json_schema_extra={'env': 'PLOT_PATH'})
-    log_path: str = Field(..., json_schema_extra={'env': 'LOG_PATH'})
+    # Paths (defaults anchored on the repo layout via paths.py; env overridable)
+    models_directory: str = Field(default=MODELS_DIR.str, json_schema_extra={'env': 'MODELS_DIRECTORY'})
+    data_source_path: str = Field(default=DATA_SOURCE_PATH.str, json_schema_extra={'env': 'DATA_SOURCE_PATH'})
+    plot_path: str = Field(default=PLOT_PATH.str, json_schema_extra={'env': 'PLOT_PATH'})
+    log_path: str = Field(default=LOG_PATH.str, json_schema_extra={'env': 'LOG_PATH'})
 
     # Training settings
     max_runtime_secs: int = Field(..., json_schema_extra={'env': 'MAX_RUNTIME_SECS'})
@@ -37,7 +38,7 @@ class Config(BaseSettings):
     class Config:
         """Pydantic configuration for environment file loading."""
 
-        # Specify only the main .env file here for Pydantic’s internal use
+        # Specify only the main .env file here for Pydantic's internal use
         env_file = '.env'
         env_file_encoding = 'utf-8'
 

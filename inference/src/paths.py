@@ -1,0 +1,33 @@
+"""Filesystem paths for the inference service, anchored on the service root.
+
+Centralizes path construction so locations are derived from the repository
+layout rather than hardcoded as absolute-path constants in env files. Config
+fields default to these and may still be overridden by environment variables.
+"""
+
+from pathlib import Path as _Path
+
+
+class Path(type(_Path())):
+    """A pathlib path that also exposes its string form via ``.str``.
+
+    Saves calling ``str(path)`` at every use site (e.g. ``MODEL_PATH.str``).
+    """
+
+    @property
+    def str(self) -> str:
+        """Return the path as a plain string."""
+        return super().__str__()
+
+
+# inference/ — two levels up from this file (inference/src/paths.py).
+SERVICE_ROOT = Path(__file__).resolve().parents[1]
+
+LOGS_DIR = SERVICE_ROOT / 'logs'
+DATA_DIR = SERVICE_ROOT / 'data'
+
+# Saved H2O AutoML model directory.
+MODEL_PATH = SERVICE_ROOT / 'automl_30_day_short'
+# CSV fallback used when the feature store is disabled.
+CSV_PATH = DATA_DIR / 'inference_data.csv'
+LOG_PATH = LOGS_DIR / 'inference.log'

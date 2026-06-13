@@ -1,6 +1,7 @@
 """Application configuration loaded from environment variables and .env files."""
 
 from dotenv import load_dotenv
+from paths import CSV_PATH, LOG_PATH, MODEL_PATH
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -21,7 +22,7 @@ class Config(BaseSettings):
     project_name: str = Field(..., json_schema_extra={'env': 'PROJECT_NAME'})
     feature_group_version: int = Field(..., json_schema_extra={'env': 'FEATURE_GROUP_VERSION'})
     hopsworks_api_key: str = Field(..., json_schema_extra={'env': 'HOPSWORKS_API_KEY'})
-    csv_path: str = Field(..., json_schema_extra={'env': 'CSV_PATH'})
+    csv_path: str = Field(default=CSV_PATH.str, json_schema_extra={'env': 'CSV_PATH'})
 
     # Feature Selection
     columns_to_drop: list = Field(default=['key', 'timestamp', 'coding'])
@@ -36,10 +37,10 @@ class Config(BaseSettings):
     last_n_days: int = Field(..., json_schema_extra={'env': 'LAST_N_DAYS'})
 
     # Logging
-    log_path: str = Field(..., json_schema_extra={'env': 'LOG_PATH'})
+    log_path: str = Field(default=LOG_PATH.str, json_schema_extra={'env': 'LOG_PATH'})
 
     # Models
-    model_path: str = Field(..., json_schema_extra={'env': 'MODEL_PATH'})
+    model_path: str = Field(default=MODEL_PATH.str, json_schema_extra={'env': 'MODEL_PATH'})
 
 
 config = Config()
